@@ -40,3 +40,16 @@
 - Test de comprensión: 3 preguntas de la IA sobre detalles del inicio, la mitad y el final del capítulo. Aprobar 2 da +10, y 3 de 3 suma +5 de bono. Si fallas, puedes reintentar tras 2 minutos más de lectura, con preguntas nuevas.
 - Estadísticas: lecturas verificadas y velocidad media.
 - Versión visible en Config y actualización automática cuando se publica una versión nueva.
+
+# v3.5 — PDF a Markdown dentro de la app
+- Al elegir un PDF, la app lo convierte a Markdown en el propio dispositivo: sin IA, sin costo y sin subir el libro a ningún servidor.
+- Capítulos detectados, en este orden de preferencia:
+  1. Marcadores del PDF.
+  2. Índice del libro.
+  3. Letra más grande en los títulos.
+  4. Títulos en mayúsculas.
+- Limpieza: números de página, encabezados y pies repetidos, guiones de corte de palabra, líneas basura y párrafos partidos.
+- Vista previa antes de guardar, con los capítulos y el tiempo estimado de lectura, y un botón para descargar el `.md`.
+- Los .txt sacados de un PDF también se convierten.
+- Aviso si el PDF parece escaneado (sin texto), porque esos necesitan OCR.
+- Código en `public/lib/pdf2md.js`.

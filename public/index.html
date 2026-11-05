@@ -157,6 +157,7 @@ textarea.input { resize:vertical; min-height:130px; }
 </head>
 <body>
 <div id="root"></div>
+<script src="lib/pdf2md.js"></script>
 <script src="art/world-data.js"></script>
 <script src="art/city-art.js"></script>
 <script src="art/europe2.js"></script>
@@ -166,7 +167,7 @@ textarea.input { resize:vertical; min-height:130px; }
 const { useState, useEffect, useRef, useCallback } = React;
 
 // ═══ CONSTANTS ═══
-const APP_VERSION = '3.4';
+const APP_VERSION = '3.5';
 const READ = { FAST_WPM:300, MAX_WPM:450, EST_WPM:200, COVERAGE:0.9, CHECK_MIN:360, CHECK_MAX:600, PASS:2, PERFECT_BONUS:5 };
 const MODELS = { haiku:'claude-haiku-4-5-20251001', sonnet:'claude-sonnet-4-6' };
 const TOKENS = { READ_CHAPTER:10, QUIZ_PASS:5, FEYNMAN:20, FLASHCARD:2, REVIEW_ONTIME:4, STREAK_STEP:5, STREAK_MAX:50, READ_MINUTE:1, READ_MINUTE_CAP:30, BOOK_DONE:200, VOICE_FEYNMAN:10 };
@@ -1097,17 +1098,40 @@ function LibraryScreen({ books, activeBookId, onBookLoad, onSelectBook, onDelete
 
   const activeBook = books.find(b=>b.id===activeBookId) || books[0];
 
+  const [convPct,setConvPct]=useState(0);
+  const [preview,setPreview]=useState(null); // {title, chapters, md, info, file}
+
   async function handleFile(e){
     const file=e.target.files[0]; if(!file)return;
-    setLoading(true); setError('');
+    setLoading(true); setError(''); setConvPct(0);
+    const title=file.name.replace(/\.pdf\.txt$/i,'').replace(/\.[^.]+$/,'').replace(/^\d+[-_ ]*/,'').replace(/[_]+/g,' ').trim()||file.name;
     try{
-      const text=await extractTextFromFile(file);
-      const chapters=isMarkdownFile(file)?splitMarkdownChapters(text):splitIntoChapters(text);
+      let md=null, info=null, chapters;
+      const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
+      if(isPdf && window.PdfToMd && window.pdfjsLib){
+        ({md,info}=await PdfToMd.fromPdf(await file.arrayBuffer(),{title,onProgress:f=>setConvPct(Math.round(f*100))}));
+        chapters=splitMarkdownChapters(md);
+      } else {
+        const text=await extractTextFromFile(file);
+        if(isMarkdownFile(file)) chapters=splitMarkdownChapters(text);
+        else if(window.PdfToMd && PdfToMd.looksLikePdfText(text)){ ({md,info}=PdfToMd.fromText(text,{title})); chapters=splitMarkdownChapters(md); }
+        else chapters=splitIntoChapters(text);
+      }
       if(!chapters.length) throw new Error('No se detectaron capítulos.');
-      const newBook={ id:Date.now(), title:file.name.replace(/\.[^.]+$/,''), chapters, loadedAt:Date.now() };
-      onBookLoad(newBook);
+      if(md) setPreview({title,chapters,md,info});
+      else onBookLoad({ id:Date.now(), title, chapters, loadedAt:Date.now() });
     }catch(err){setError(err.message);}finally{setLoading(false); e.target.value='';}
   }
+  function savePreview(){
+    onBookLoad({ id:Date.now(), title:preview.title, chapters:preview.chapters, loadedAt:Date.now(), source:'pdf' });
+    setPreview(null);
+  }
+  function downloadMd(){
+    const blob=new Blob([preview.md],{type:'text/markdown;charset=utf-8'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=preview.title.replace(/[\\/:*?"<>|]+/g,'').slice(0,80)+'.md';
+    document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+  }
+  const SRC={outline:'índice del PDF (marcadores)',toc:'índice del libro',font:'tamaño de los títulos',caps:'títulos en mayúsculas',none:'tamaño (sin títulos)'};
 
   const bookProgress=(book)=>{
     const done=book.chapters?.filter(ch=>progress?.[`${book.id}_${ch.id}`]).length||0;
@@ -1124,17 +1148,49 @@ function LibraryScreen({ books, activeBookId, onBookLoad, onSelectBook, onDelete
         <div style={{display:'flex',gap:8}}>
           {books.length>1&&<button className="btn btn-secondary btn-sm" onClick={()=>setShowBooks(true)}>📂 Mis libros</button>}
           <button className="btn btn-primary btn-sm" onClick={()=>fileRef.current.click()} disabled={loading}>
-            {loading?<Spinner text=""/>:<><Icons.Upload/> Añadir</>}
+            {loading?<Spinner text={convPct?`${convPct}%`:''}/>:<><Icons.Upload/> Añadir</>}
           </button>
         </div>
       </div>
       <input ref={fileRef} type="file" accept=".md,.markdown,.txt,.pdf,.epub,text/markdown,text/plain,application/pdf" style={{display:'none'}} onChange={handleFile}/>
+      {loading&&convPct>0&&(
+        <div className="glass-card" style={{padding:14,marginBottom:14}}>
+          <div style={{fontSize:15,color:'var(--text)',marginBottom:8}}>📄 Convirtiendo PDF a Markdown… {convPct}%</div>
+          <div className="progress-track"><div className="progress-fill-cyan" style={{width:`${convPct}%`}}/></div>
+        </div>
+      )}
+      {preview&&ReactDOM.createPortal(
+        <div className="modal-overlay">
+          <div className="modal-sheet" style={{maxHeight:'88vh',overflowY:'auto'}}>
+            <div className="modal-handle"/>
+            <div className="font-display" style={{fontWeight:800,fontSize:20,color:'var(--text)',marginBottom:4}}>📄 {preview.title}</div>
+            <div style={{fontSize:14,color:'var(--muted)',marginBottom:12,lineHeight:1.6}}>
+              Convertido a Markdown en tu dispositivo · {preview.info.pages} páginas · {preview.info.words.toLocaleString('es-CO')} palabras<br/>
+              Capítulos detectados con: <strong style={{color:'#67e8f9'}}>{SRC[preview.info.source]||preview.info.source}</strong> · {preview.info.removed} líneas basura quitadas
+            </div>
+            {preview.info.warnings.map((w,i)=><div key={i} style={{fontSize:14,color:'#fcd34d',marginBottom:8}}>⚠️ {w}</div>)}
+            <div style={{border:'1px solid var(--border)',borderRadius:12,maxHeight:'38vh',overflowY:'auto',marginBottom:14}}>
+              {preview.chapters.map((c,i)=>(
+                <div key={i} style={{display:'flex',justifyContent:'space-between',gap:10,padding:'9px 12px',borderBottom:'1px solid rgba(51,65,85,0.3)',fontSize:14}}>
+                  <span style={{color:'var(--text)'}}><span style={{color:'var(--muted)'}}>{i+1}.</span> {c.title.length>70?c.title.slice(0,70)+'…':c.title}</span>
+                  <span style={{color:'var(--muted)',flexShrink:0}}>~{Math.max(1,Math.round(c.words/200))} min</span>
+                </div>
+              ))}
+            </div>
+            <button className="btn btn-primary btn-full btn-lg" onClick={savePreview}>✅ Guardar {preview.chapters.length} capítulos</button>
+            <div style={{display:'flex',gap:8,marginTop:10}}>
+              <button className="btn btn-secondary" style={{flex:1}} onClick={downloadMd}>⬇️ Descargar .md</button>
+              <button className="btn btn-secondary" style={{flex:1}} onClick={()=>setPreview(null)}>Cancelar</button>
+            </div>
+          </div>
+        </div>, document.body
+      )}
 
       {books.length===0&&(
         <div className="glass-card" style={{padding:36,textAlign:'center'}}>
           <div style={{fontSize:52,marginBottom:16}}>📖</div>
           <div className="font-display" style={{fontWeight:800,fontSize:20,color:'var(--text)',marginBottom:8}}>Sin libros cargados</div>
-          <div style={{fontSize:19,color:'var(--muted)',marginBottom:24}}>Markdown (.md) recomendado · también TXT o PDF</div>
+          <div style={{fontSize:19,color:'var(--muted)',marginBottom:24}}>PDF (se convierte solo a Markdown) · también .md o TXT</div>
           <button className="btn btn-primary btn-lg" onClick={()=>fileRef.current.click()}><Icons.Upload/> Cargar primer libro</button>
           {error&&<div style={{color:'#fca5a5',fontSize:18,marginTop:14}}>{error}</div>}
         </div>

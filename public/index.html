@@ -1,0 +1,2533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="theme-color" content="#020617"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<title>StudyQuest — Lector Inteligente</title>
+<link rel="manifest" href="manifest.json"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap"/>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<style>
+:root {
+  --bg: #020617; --surface: rgba(15,23,42,0.8); --surface2: rgba(8,15,30,0.9);
+  --border: rgba(51,65,85,0.6); --accent: #06b6d4; --accent2: #ef4444;
+  --accent3: #10b981; --gold: #f59e0b; --text: #f1f5f9; --muted: #475569;
+}
+[data-theme="light"] {
+  --bg: #f0f9ff; --surface: rgba(255,255,255,0.95); --surface2: rgba(241,245,249,0.98);
+  --border: rgba(148,163,184,0.5); --text: #0f172a; --muted: #475569;
+}
+[data-theme="light"] .flashcard-front { background: linear-gradient(145deg,#0d1b2e,#0a1525) !important; }
+[data-theme="light"] .flashcard-back { background: linear-gradient(145deg,#061a14,#0a2018) !important; }
+[data-theme="light"] .glass-card { background: rgba(255,255,255,0.95) !important; box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important; }
+[data-theme="light"] .glass-card-cyan { background: rgba(240,249,255,0.98) !important; }
+[data-theme="light"] .modal-sheet { background: #ffffff !important; }
+[data-theme="light"] .bottom-nav { background: rgba(248,250,252,0.97) !important; }
+[data-theme="light"] .nav-item { color: #94a3b8; }
+[data-theme="light"] .nav-item.active { color: #0891b2; }
+[data-theme="light"] .tab-chip { background: rgba(241,245,249,0.9); color: #64748b; border-color: rgba(148,163,184,0.4); }
+[data-theme="light"] .tab-chip.active { color: #0891b2; }
+[data-theme="light"] .quiz-option { background: rgba(248,250,252,0.95); color: #0f172a; }
+[data-theme="light"] .chapter-item { background: rgba(255,255,255,0.95); }
+[data-theme="light"] .tts-bar { background: rgba(241,245,249,0.95); border-color: rgba(6,182,212,0.3); }
+[data-theme="light"] .input { background: rgba(248,250,252,0.98); color: #0f172a; border-color: rgba(148,163,184,0.5); }
+[data-theme="light"] .btn-secondary { background: rgba(241,245,249,0.9); color: #475569; border-color: rgba(148,163,184,0.5); }
+[data-theme="light"] .model-card { background: rgba(241,245,249,0.9) !important; border-color: rgba(148,163,184,0.3) !important; }
+[data-theme="light"] .model-card .model-name { color: inherit !important; }
+[data-theme="light"] .country-card { background: rgba(255,255,255,0.9); }
+[data-theme="light"] .stat-card { background: rgba(255,255,255,0.95); }
+* { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+html,body,#root { height:100%; width:100%; overflow:hidden; }
+body { background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; font-size:17px; transition:background 0.3s,color 0.3s; }
+#root { display:flex; flex-direction:column; max-width:480px; margin:0 auto; }
+::-webkit-scrollbar { width:3px; }
+::-webkit-scrollbar-thumb { background:#1e293b; border-radius:2px; }
+.font-display { font-family:'Plus Jakarta Sans',sans-serif; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+@keyframes spin { to{transform:rotate(360deg)} }
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+@keyframes conquestPop { 0%{transform:scale(0.5);opacity:0} 60%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
+.fade-up { animation:fadeUp 0.35s ease forwards; }
+.fade-in { animation:fadeIn 0.25s ease forwards; }
+.spin { animation:spin 0.8s linear infinite; }
+.conquest-pop { animation:conquestPop 0.5s cubic-bezier(0.4,0,0.2,1) forwards; }
+.scroll-area { flex:1; overflow-y:auto; overflow-x:hidden; padding:20px 16px; -webkit-overflow-scrolling:touch; }
+.glass-card { background:var(--surface); border:1px solid var(--border); border-radius:20px; backdrop-filter:blur(12px); box-shadow:0 4px 24px rgba(0,0,0,0.3); }
+.glass-card-cyan { background:var(--surface2); border:1px solid rgba(6,182,212,0.2); border-radius:20px; box-shadow:0 4px 24px rgba(6,182,212,0.08); }
+.grad-cyan { background:linear-gradient(135deg,#67e8f9,#3b82f6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.grad-gold { background:linear-gradient(135deg,#fde68a,#f59e0b); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.grad-green { background:linear-gradient(135deg,#6ee7b7,#10b981); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:13px 22px; border-radius:12px; border:none; cursor:pointer; font-family:'Plus Jakarta Sans',sans-serif; font-size:16px; font-weight:700; transition:all 0.2s ease; -webkit-user-select:none; user-select:none; }
+.btn:active { transform:scale(0.96); }
+.btn:disabled { opacity:0.4; cursor:not-allowed; }
+.btn:disabled:active { transform:none; }
+.btn-primary { background:linear-gradient(135deg,#06b6d4,#3b82f6); color:white; box-shadow:0 4px 15px rgba(6,182,212,0.35); }
+.btn-primary:hover { background:linear-gradient(135deg,#22d3ee,#60a5fa); }
+.btn-secondary { background:rgba(30,41,59,0.8); color:#94a3b8; border:1px solid rgba(51,65,85,0.8); }
+.btn-secondary:hover { border-color:#06b6d4; color:#67e8f9; }
+.btn-danger { background:linear-gradient(135deg,#ef4444,#dc2626); color:white; }
+.btn-success { background:linear-gradient(135deg,#10b981,#059669); color:white; }
+.btn-gold { background:linear-gradient(135deg,#f59e0b,#d97706); color:#0f172a; font-weight:800; }
+.btn-purple { background:linear-gradient(135deg,#8b5cf6,#6d28d9); color:white; }
+.btn-sm { padding:9px 16px; font-size:14px; border-radius:10px; }
+.btn-lg { padding:17px 28px; font-size:17px; border-radius:14px; }
+.btn-full { width:100%; }
+.input { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:12px; padding:14px 18px; color:var(--text); font-family:'Inter',sans-serif; font-size:16px; outline:none; transition:all 0.2s; line-height:1.5; }
+.input:focus { border-color:#06b6d4; box-shadow:0 0 0 3px rgba(6,182,212,0.15); }
+.input::placeholder { color:#475569; }
+textarea.input { resize:vertical; min-height:130px; }
+.badge { display:inline-flex; align-items:center; gap:4px; padding:5px 12px; border-radius:20px; font-size:13px; font-weight:600; font-family:'Plus Jakarta Sans',sans-serif; }
+.badge-cyan { background:rgba(6,182,212,0.12); color:#67e8f9; border:1px solid rgba(6,182,212,0.2); }
+.badge-gold { background:rgba(245,158,11,0.12); color:#fcd34d; border:1px solid rgba(245,158,11,0.2); }
+.badge-green { background:rgba(16,185,129,0.12); color:#6ee7b7; border:1px solid rgba(16,185,129,0.2); }
+.badge-red { background:rgba(239,68,68,0.12); color:#fca5a5; border:1px solid rgba(239,68,68,0.2); }
+.badge-slate { background:rgba(51,65,85,0.5); color:#94a3b8; border:1px solid rgba(71,85,105,0.4); }
+.badge-purple { background:rgba(139,92,246,0.12); color:#c4b5fd; border:1px solid rgba(139,92,246,0.2); }
+.progress-track { width:100%; height:6px; background:rgba(30,41,59,0.8); border-radius:3px; overflow:hidden; }
+.progress-fill { height:100%; background:linear-gradient(90deg,#f59e0b,#fbbf24); border-radius:3px; transition:width 0.6s cubic-bezier(0.4,0,0.2,1); box-shadow:0 0 8px rgba(245,158,11,0.5); }
+.progress-fill-cyan { height:100%; background:linear-gradient(90deg,#06b6d4,#3b82f6); border-radius:3px; transition:width 0.6s cubic-bezier(0.4,0,0.2,1); }
+.bottom-nav { display:flex; background:rgba(10,15,30,0.95); border-top:1px solid rgba(51,65,85,0.5); backdrop-filter:blur(20px); padding-bottom:env(safe-area-inset-bottom,8px); position:relative; }
+.bottom-nav::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(6,182,212,0.3),transparent); }
+.nav-item { flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; padding:11px 4px 9px; cursor:pointer; border:none; background:none; color:#475569; font-family:'Plus Jakarta Sans',sans-serif; font-size:11px; font-weight:600; transition:color 0.2s; -webkit-user-select:none; letter-spacing:0.4px; text-transform:uppercase; }
+.nav-item.active { color:#22d3ee; }
+.nav-item.active svg { filter:drop-shadow(0 0 6px rgba(34,211,238,0.6)); }
+.nav-item svg { width:24px; height:24px; }
+.tab-bar { display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; margin-bottom:18px; }
+.tab-bar::-webkit-scrollbar { display:none; }
+.tab-chip { flex-shrink:0; padding:10px 18px; border-radius:20px; background:var(--surface2); border:1px solid var(--border); font-family:'Plus Jakarta Sans',sans-serif; font-size:14px; font-weight:600; color:#64748b; cursor:pointer; transition:all 0.2s; white-space:nowrap; -webkit-user-select:none; }
+.tab-chip.active { background:linear-gradient(135deg,rgba(6,182,212,0.2),rgba(59,130,246,0.2)); border-color:rgba(6,182,212,0.5); color:#67e8f9; }
+.flashcard { perspective:1200px; width:100%; height:210px; cursor:pointer; }
+.flashcard-inner { position:relative; width:100%; height:100%; transform-style:preserve-3d; transition:transform 0.55s cubic-bezier(0.4,0,0.2,1); }
+.flashcard.flipped .flashcard-inner { transform:rotateY(180deg); }
+.flashcard-front,.flashcard-back { position:absolute; inset:0; backface-visibility:hidden; border-radius:20px; padding:24px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; }
+.flashcard-front { background:linear-gradient(145deg,#0d1b2e,#0a1525); border:2px solid rgba(6,182,212,0.45); box-shadow:0 8px 32px rgba(6,182,212,0.15); }
+.flashcard-back { background:linear-gradient(145deg,#061a14,#0a2018); border:2px solid rgba(16,185,129,0.5); box-shadow:0 8px 32px rgba(16,185,129,0.15); transform:rotateY(180deg); }
+.flashcard-front, .flashcard-back { color:#f1f5f9 !important; }
+.flashcard-front *, .flashcard-back * { color:#f1f5f9 !important; }
+.flashcard-back .answer-text { color:#a7f3d0 !important; }
+.toast { position:fixed; bottom:88px; left:50%; transform:translateX(-50%); background:rgba(10,20,40,0.95); border:1px solid rgba(6,182,212,0.4); border-radius:12px; padding:11px 18px; font-family:'Plus Jakarta Sans',sans-serif; font-size:13px; font-weight:700; color:#67e8f9; z-index:2000; white-space:nowrap; animation:fadeUp 0.2s ease; pointer-events:none; backdrop-filter:blur(12px); }
+.toast.error { border-color:rgba(239,68,68,0.4); color:#fca5a5; }
+.toast.conquest { border-color:rgba(245,158,11,0.6); color:#fcd34d; font-size:14px; padding:14px 22px; }
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.75); display:flex; align-items:flex-end; justify-content:center; z-index:1000; backdrop-filter:blur(6px); }
+.modal-sheet { width:100%; max-width:480px; background:var(--bg); border-radius:24px 24px 0 0; padding:24px; border-top:1px solid rgba(51,65,85,0.6); max-height:82vh; overflow-y:auto; animation:slideUp 0.3s cubic-bezier(0.4,0,0.2,1); }
+.modal-handle { width:36px; height:4px; background:rgba(71,85,105,0.6); border-radius:2px; margin:0 auto 20px; }
+.reading-text { font-size:17px; line-height:1.9; color:var(--text); font-family:'Inter',sans-serif; opacity:0.9; }
+.reading-text p { margin-bottom:16px; }
+.quiz-option { width:100%; padding:16px 18px; margin-bottom:8px; background:var(--surface2); border:1px solid var(--border); border-radius:12px; cursor:pointer; font-family:'Inter',sans-serif; font-size:15px; color:var(--text); text-align:left; transition:all 0.15s; -webkit-user-select:none; display:block; }
+.quiz-option:hover { border-color:rgba(6,182,212,0.5); }
+.quiz-option.correct { border-color:rgba(16,185,129,0.6); background:rgba(16,185,129,0.08); color:#6ee7b7; }
+.quiz-option.wrong { border-color:rgba(239,68,68,0.5); background:rgba(239,68,68,0.07); color:#fca5a5; }
+.quiz-option:disabled { cursor:default; }
+.chapter-item { display:flex; align-items:center; gap:12px; padding:16px 18px; border-radius:14px; background:var(--surface); border:1px solid var(--border); margin-bottom:8px; cursor:pointer; transition:all 0.2s; }
+.chapter-item:hover { border-color:rgba(6,182,212,0.35); }
+.chapter-item.completed { border-color:rgba(16,185,129,0.3); }
+.neon-sep { border:none; height:1px; background:linear-gradient(90deg,transparent,rgba(6,182,212,0.2),transparent); margin:16px 0; }
+.country-card { border-radius:20px; padding:18px; margin-bottom:12px; cursor:pointer; transition:all 0.25s; border:2px solid transparent; position:relative; overflow:hidden; }
+.country-card.conquered { border-color:rgba(245,158,11,0.5); background:linear-gradient(135deg,rgba(245,158,11,0.08),rgba(251,191,36,0.04)); }
+.country-card.active-country { border-color:rgba(6,182,212,0.5); background:linear-gradient(135deg,rgba(6,182,212,0.08),rgba(59,130,246,0.04)); }
+.country-card.locked { opacity:0.5; cursor:not-allowed; }
+.building-slot { width:60px; height:60px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; border:1px dashed rgba(51,65,85,0.5); background:rgba(15,23,42,0.4); transition:all 0.2s; }
+.building-slot.filled { border-color:rgba(6,182,212,0.3); background:rgba(6,182,212,0.06); }
+.stat-card { background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:16px; text-align:center; }
+.loading-dots span { animation:pulse 1.4s infinite; display:inline-block; }
+.loading-dots span:nth-child(2) { animation-delay:0.2s; }
+.loading-dots span:nth-child(3) { animation-delay:0.4s; }
+.eval-excellent { border-color:rgba(16,185,129,0.5)!important; }
+.eval-good { border-color:rgba(6,182,212,0.5)!important; }
+.eval-poor { border-color:rgba(239,68,68,0.4)!important; }
+#pixel-city { display:block; width:100%; }
+.tts-bar { display:flex; align-items:center; gap:8px; padding:10px 14px; background:rgba(8,15,30,0.9); border:1px solid rgba(6,182,212,0.2); border-radius:12px; margin-bottom:12px; }
+.tts-progress { flex:1; height:4px; background:rgba(30,41,59,0.8); border-radius:2px; overflow:hidden; cursor:pointer; }
+.tts-fill { height:100%; background:linear-gradient(90deg,#06b6d4,#3b82f6); border-radius:2px; transition:width 0.3s linear; }
+
+@media (min-width: 760px) {
+  #root { max-width: 560px; margin: 0 auto; box-shadow: 0 0 80px rgba(6,182,212,0.08); border-left: 1px solid rgba(51,65,85,0.35); border-right: 1px solid rgba(51,65,85,0.35); }
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="art/world-data.js"></script>
+<script src="art/city-art.js"></script>
+<script src="art/europe2.js"></script>
+<script src="art/americas.js"></script>
+<script src="art/mideast_asia.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ═══ CONSTANTS ═══
+const APP_VERSION = '3.4';
+const READ = { FAST_WPM:300, MAX_WPM:450, EST_WPM:200, COVERAGE:0.9, CHECK_MIN:360, CHECK_MAX:600, PASS:2, PERFECT_BONUS:5 };
+const MODELS = { haiku:'claude-haiku-4-5-20251001', sonnet:'claude-sonnet-4-6' };
+const TOKENS = { READ_CHAPTER:10, QUIZ_PASS:5, FEYNMAN:20, FLASHCARD:2, REVIEW_ONTIME:4, STREAK_STEP:5, STREAK_MAX:50, READ_MINUTE:1, READ_MINUTE_CAP:30, BOOK_DONE:200, VOICE_FEYNMAN:10 };
+
+// ═══ MUNDO — datos en art/world-data.js ═══
+const EUROPEAN_COUNTRIES = WORLD_COUNTRIES; // compatibilidad
+const COUNTRY_BUILDINGS = WORLD_BUILDINGS;
+const LEVEL_MULT = [0, 1, 1.5, 2], MAX_LVL = 3;
+const levelCost = (bid, lvl) => Math.round((WORLD_BUILDINGS[bid]?.cost || 0) * LEVEL_MULT[lvl]);
+const countryLevels = (city, c) => c.buildings.reduce((a, b) => a + (((city || {})[c.id] || {})[b] || 0), 0);
+const countryPct = (city, c) => Math.round(countryLevels(city, c) / (c.buildings.length * MAX_LVL) * 100);
+const MILESTONES = [ { pct:50, bonus:100, label:'¡Mitad construida!' }, { pct:75, bonus:150, label:'¡Casi lista!' }, { pct:100, bonus:500, label:'¡Conquista!' } ];
+const continentUnlocked = (ct, conquests) => !ct || !ct.unlock || WORLD_COUNTRIES.filter(c => c.continent === ct.unlock.from && (conquests || []).includes(c.id)).length >= ct.unlock.conquests;
+
+// ═══ STORAGE — triple-layer: localStorage + sessionStorage + cookie (iOS PWA safe) ═══
+const LS = {
+  get(k, d=null) {
+    try { const v=localStorage.getItem(k); if(v!==null) return JSON.parse(v); } catch {}
+    try { const v=sessionStorage.getItem(k); if(v!==null) return JSON.parse(v); } catch {}
+    try {
+      const m=document.cookie.match(new RegExp('(?:^|; )sq_c_'+k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'=([^;]*)'));
+      if(m) return JSON.parse(decodeURIComponent(m[1]));
+    } catch {}
+    return d;
+  },
+  set(k, v) {
+    const s = JSON.stringify(v);
+    try { localStorage.setItem(k, s); } catch {}
+    try { sessionStorage.setItem(k, s); } catch {}
+    // Critical keys also in cookie (1 year) — survives iOS PWA restarts
+    const critical = ['sq_apikey','sq_pin','sq_tokens','sq_theme','sq_conquests'];
+    if(critical.includes(k)) {
+      try {
+        const exp = new Date(Date.now()+365*24*60*60*1000).toUTCString();
+        document.cookie = 'sq_c_'+k+'='+encodeURIComponent(s)+'; expires='+exp+'; path=/; SameSite=Lax';
+      } catch {}
+    }
+  },
+};
+
+// ═══ API ═══
+async function callClaude({apiKey,model,system,messages,max_tokens=1024}) {
+  const res = await fetch("/api/claude",{
+    method:"POST",
+    headers:Object.assign({"Content-Type":"application/json"},(apiKey||LS.get('sq_apikey',''))?{"X-Api-Key":apiKey||LS.get('sq_apikey','')}:{},LS.get('sq_pin','')?{"X-App-Pin":LS.get('sq_pin','')}:{}),
+    body:JSON.stringify({model,max_tokens,system,messages}),
+  });
+  if(!res.ok){ const e=await res.json().catch(()=>({error:{message:"Error"}})); throw new Error(e.error?.message||`HTTP ${res.status}`); }
+  const data=await res.json();
+  return data.content[0].text;
+}
+
+// ═══ PROMPTS ═══
+const PROMPTS = {
+  comprehension:(text)=>{
+    const t=text.replace(/\s+/g,' '), n=t.length, seg=1300;
+    const parts=n<=seg*3?[t]:[t.slice(0,seg),t.slice(Math.floor(n/2-seg/2),Math.floor(n/2+seg/2)),t.slice(n-seg)];
+    return { model:MODELS.haiku, max_tokens:900,
+      system:`Eres examinador de comprensión lectora. Crea 3 preguntas de opción múltiple sobre DETALLES CONCRETOS del texto (hechos, ejemplos, nombres, cifras, argumentos) que solo puede responder quien lo leyó; nada de cultura general. Una pregunta por cada fragmento si hay varios. 4 opciones plausibles, una correcta. Responde en español. SOLO JSON: {"questions":[{"q":"...","options":["...","...","...","..."],"correct":0,"why":"cita breve del texto"}]}`,
+      messages:[{role:'user',content:parts.map((p,i)=>`FRAGMENTO ${i+1}:\n${p}`).join('\n\n')}] };
+  },
+  translate:(text)=>({ model:MODELS.haiku, system:`Eres traductor académico inglés→español. Traduce con precisión. SOLO texto traducido en párrafos.`, messages:[{role:'user',content:`Traduce:\n\n${text}`}], max_tokens:2048 }),
+  flashcards:(text)=>({ model:MODELS.haiku, system:`Genera 5 flashcards JSON. SOLO JSON: {"cards":[{"q":"...","a":"..."},...]}`, messages:[{role:'user',content:`Texto:\n\n${text.slice(0,3000)}\n\nGenera 5 flashcards.`}], max_tokens:800 }),
+  feynmanEval:(text,exp)=>({ model:MODELS.sonnet, system:`Evalúas Técnica Feynman. SOLO JSON: {"score":0-100,"level":"Excelente|Bien|Incompleto|Confuso","concepts_mastered":["..."],"concepts_missing":["..."],"errors":["..."],"feedback":"...","improvement":"..."}`, messages:[{role:'user',content:`CAPÍTULO:\n${text.slice(0,2000)}\n\nESTUDIANTE:\n${exp}`}], max_tokens:1024 }),
+  quiz:(text)=>({ model:MODELS.sonnet, system:`Genera 5 preguntas: 3 múltiple + 2 razonamiento. SOLO JSON: {"questions":[{"type":"multiple","question":"...","options":["A)...","B)...","C)...","D)..."],"correct":0,"explanation":"..."},{"type":"reasoning","question":"...","ideal_answer":"...","keywords":["k1","k2"]},...]}`, messages:[{role:'user',content:`Texto:\n\n${text.slice(0,3000)}`}], max_tokens:1500 }),
+  evalReasoning:(q,ideal,kw,ans)=>({ model:MODELS.sonnet, system:`Evalúa respuesta. SOLO JSON: {"score":0-100,"passed":true/false,"feedback":"..."}`, messages:[{role:'user',content:`PREGUNTA:${q}\nIDEAL:${ideal}\nCLAVES:${kw.join(',')}\nESTUDIANTE:${ans}`}], max_tokens:300 }),
+};
+
+// ═══ TEXT PROCESSING ═══
+function splitIntoChapters(text) {
+  const patterns=[/\n\s*(Chapter\s+\d+[.:)—]?\s*[^\n]*)\n/gi,/\n\s*(CHAPTER\s+\d+[.:)—]?\s*[^\n]*)\n/g,/\n\s*(Capítulo\s+\d+[.:)—]?\s*[^\n]*)\n/gi,/\n\s*(PART\s+[IVXLC\d]+[.:)—]?\s*[^\n]*)\n/gi,/\n\s*(\d+\.\s+[A-Z][^\n]{3,60})\n/g];
+  let chapters=[];
+  for(const p of patterns){const m=[...text.matchAll(p)];if(m.length>=2){for(let i=0;i<m.length;i++){const s=m[i].index+m[i][0].length,e=i+1<m.length?m[i+1].index:text.length,c=text.slice(s,e).trim();if(c.length>100)chapters.push({id:i,title:m[i][1].trim(),content:c,words:c.split(/\s+/).length});}break;}}
+  if(chapters.length<2){const w=text.split(/\s+/),cs=1500;chapters=[];for(let i=0;i<w.length;i+=cs)chapters.push({id:chapters.length,title:`Fragmento ${chapters.length+1}`,content:w.slice(i,i+cs).join(' '),words:Math.min(cs,w.length-i)});}
+  return chapters;
+}
+// ═══ MARKDOWN (.md) — capítulos por encabezados, texto limpio para la IA ═══
+function mdToPlain(md){
+  return md
+    .replace(/\r\n?/g,'\n')
+    .replace(/<!--[\s\S]*?-->/g,'')
+    .replace(/```[^\n]*\n([\s\S]*?)```/g,'$1')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g,'')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g,'$1')
+    .replace(/<[^>\n]+>/g,'')
+    .replace(/^\s{0,3}#{1,6}\s+(.*?)\s*#*\s*$/gm,'$1')
+    .replace(/^\s{0,3}>\s?/gm,'')
+    .replace(/^\s*[-*+]\s+/gm,'• ')
+    .replace(/^\s*([-*_]\s*){3,}$/gm,'')
+    .replace(/^\|?(\s*:?-{2,}:?\s*\|)+\s*:?-*:?\s*\|?\s*$/gm,'')
+    .replace(/^\|(.*)\|\s*$/gm,(m,row)=>row.split('|').map(x=>x.trim()).join(' · '))
+    .replace(/(\*\*|__)(?=\S)([\s\S]*?\S)\1/g,'$2')
+    .replace(/(^|[^\w*])\*(?=\S)([^*\n]*?\S)\*(?![\w*])/g,'$1$2')
+    .replace(/(^|[^\w])_(?=\S)([^_\n]*?\S)_(?!\w)/g,'$1$2')
+    .replace(/`([^`\n]+)`/g,'$1')
+    .replace(/[ \t]+\n/g,'\n')
+    .replace(/\n{3,}/g,'\n\n')
+    .trim();
+}
+function splitMarkdownChapters(md){
+  const text=md.replace(/\r\n?/g,'\n').replace(/^﻿/,'').replace(/^---\n[\s\S]*?\n---\n/,'');
+  const lines=text.split('\n'); const heads=[]; let inCode=false;
+  lines.forEach((ln,i)=>{
+    if(/^\s*```/.test(ln)){inCode=!inCode;return;}
+    if(inCode) return;
+    const m=ln.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+    if(m) heads.push({i,lvl:m[1].length,title:m[2].replace(/[*_`]/g,'').trim()});
+  });
+  const build=(lvl)=>{
+    const hs=heads.filter(h=>h.lvl===lvl); if(hs.length<2) return null;
+    const out=[]; let carry='', carryW=0;
+    const intro=mdToPlain(lines.slice(0,hs[0].i).join('\n'));
+    hs.forEach((h,k)=>{
+      const end=k+1<hs.length?hs[k+1].i:lines.length;
+      const body=mdToPlain(lines.slice(h.i+1,end).join('\n'));
+      const words=body.split(/\s+/).filter(Boolean).length;
+      // secciones cortas: se unen al capítulo anterior (o al siguiente si aún no hay ninguno)
+      if(words<120 && out.length){ const prev=out[out.length-1]; prev.content+=`\n\n${h.title}\n\n${body}`; prev.words+=words; return; }
+      if(words<120){ carry+=`${h.title}\n\n${body}\n\n`; carryW+=words; return; }
+      out.push({id:out.length,title:h.title.slice(0,120),content:carry+body,words:words+carryW}); carry=''; carryW=0;
+    });
+    if(carry && out.length===0 && carryW>0) out.push({id:0,title:hs[0].title.slice(0,120),content:carry.trim(),words:carryW});
+    if(out.length && intro.split(/\s+/).length>150) out.unshift({id:-1,title:'Introducción',content:intro,words:intro.split(/\s+/).length});
+    out.forEach((c,i)=>c.id=i);
+    return out.length>=2?out:null;
+  };
+  const cands=[1,2,3].map(build).filter(Boolean);
+  const good=cands.find(c=>c.length>=3 && c.reduce((a,x)=>a+x.words,0)/c.length<=12000);
+  const best=good||cands.sort((a,b)=>b.length-a.length)[0];
+  return best||splitIntoChapters('\n'+mdToPlain(text)+'\n');
+}
+const isMarkdownFile=(file)=>/\.(md|markdown|mdown|mkd)$/i.test(file.name)||file.type==='text/markdown';
+
+// ═══ CACHÉ DE IA — no pagar dos veces la misma traducción ═══
+const AICache={
+  get(k){ const all=LS.get('sq_aicache',{}); return all[k]||null; },
+  set(k,v){
+    const all=LS.get('sq_aicache',{}); all[k]={...(all[k]||{}),...v,ts:Date.now()};
+    const keys=Object.keys(all);
+    if(keys.length>40) keys.sort((a,b)=>(all[a].ts||0)-(all[b].ts||0)).slice(0,keys.length-40).forEach(x=>delete all[x]);
+    LS.set('sq_aicache',all);
+  },
+};
+
+async function extractTextFromFile(file){
+  if(file.type==='application/pdf'){const ab=await file.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:ab}).promise;let t='';for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i);const c=await pg.getTextContent();t+=c.items.map(s=>s.str).join(' ')+'\n';}return t;}
+  return new Promise((res,rej)=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.onerror=rej;r.readAsText(file,'utf-8');});
+}
+
+// ═══ PDF EXPORT ═══
+function exportFeynmanPDF(chapter, feynmanText, feynmanResult) {
+  const content = `STUDYQUEST — Exportación Técnica Feynman
+================================================
+Fecha: ${new Date().toLocaleDateString('es-ES', {weekday:'long',year:'numeric',month:'long',day:'numeric'})}
+Capítulo: ${chapter.title}
+
+PUNTUACIÓN: ${feynmanResult.score}/100 — ${feynmanResult.level}
+================================================
+
+MI EXPLICACIÓN:
+${feynmanText}
+
+CONCEPTOS DOMINADOS:
+${(feynmanResult.concepts_mastered||[]).map(c=>`  ✓ ${c}`).join('\n')||'  (ninguno detectado)'}
+
+CONCEPTOS A PROFUNDIZAR:
+${(feynmanResult.concepts_missing||[]).map(c=>`  ⚠ ${c}`).join('\n')||'  (ninguno)'}
+
+RETROALIMENTACIÓN:
+${feynmanResult.feedback}
+
+CONSEJO DE ESTUDIO:
+${feynmanResult.improvement||''}
+
+================================================
+Generado por StudyQuest — Sistema de Aprendizaje Avanzado`;
+
+  const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Feynman_${chapter.title.replace(/[^a-zA-Z0-9]/g,'_')}_${Date.now()}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ═══ TTS — DYNAMIC VOICE SYSTEM ═══
+// Instead of fixed profiles, we show REAL voices installed on the device
+// grouped by language family, letting user pick the exact voice.
+
+const LANG_GROUPS = [
+  { id:'es-ES', label:'🇪🇸 Español (España)',         langs:['es-ES','es_ES'], flag:'🇪🇸' },
+  { id:'es-MX', label:'🇲🇽 Español (México/Latino)',  langs:['es-MX','es-US','es_MX','es-419','es-AR','es-CO','es-CL'], flag:'🇲🇽' },
+  { id:'en-GB', label:'🇬🇧 English (British)',         langs:['en-GB','en_GB','en-AU'], flag:'🇬🇧' },
+  { id:'en-US', label:'🇺🇸 English (American)',        langs:['en-US','en_US'], flag:'🇺🇸' },
+];
+
+// Heuristic: guess gender from voice name
+function guessGender(voiceName) {
+  if(VOICE_GENDER[voiceName]) return VOICE_GENDER[voiceName];
+  const name = voiceName.toLowerCase();
+  const femaleNames = ['monica','lucia','elena','conchita','paulina','angela','maria','sofia','isabel','sara','kate','emily','serena','martha','victoria','fiona','karen','veena','samantha','alex','siri'];
+  const maleNames   = ['jorge','diego','juan','miguel','carlos','daniel','oliver','arthur','george','james','tom','lee','mark'];
+  if(femaleNames.some(n => name.includes(n))) return 'female';
+  if(maleNames.some(n => name.includes(n))) return 'male';
+  // Last letter heuristic: names ending in 'a' tend to be female
+  const firstName = voiceName.split(' ')[0];
+  if(/a$/i.test(firstName)) return 'female';
+  return 'male';
+}
+
+function getVoicesForGroup(groupId, allVoices) {
+  const group = LANG_GROUPS.find(g => g.id === groupId);
+  if(!group) return [];
+  return allVoices.filter(v =>
+    group.langs.some(l => v.lang === l || v.lang.startsWith(l.slice(0,5)))
+  );
+}
+
+function getAllSpanishVoices(allVoices) {
+  return allVoices.filter(v => v.lang.startsWith('es'));
+}
+
+function getAllEnglishVoices(allVoices) {
+  return allVoices.filter(v => v.lang.startsWith('en'));
+}
+
+// ═══ VOCES CURADAS: 2 de mujer + 2 de hombre en español y en inglés ═══
+const VOICE_DB = {
+  female: ['mónica','monica','paulina','marisol','lucía','lucia','elvira','dalia','salome','salomé','ximena','abril','helena','laura','sabina','elena','isabela','angélica','angelica','soledad','esperanza','francisca','paloma','camila','valentina',
+           'samantha','ava','allison','susan','zoe','karen','moira','tessa','serena','kate','victoria','nicky','joelle','aria','jenny','emma','michelle','sonia','libby','natasha','clara','zira','hazel','martha','fiona','catherine','jane','ana','sara','sophia'],
+  male:   ['jorge','juan','diego','carlos','álvaro','alvaro','gonzalo','tomás','tomas','pablo','raúl','raul','alonso','jaime','andrés','andres','emilio','federico','gerardo','arnau','dario','darío','enrique',
+           'daniel','alex','tom','evan','nathan','aaron','oliver','arthur','rishi','gordon','lee','guy','davis','christopher','eric','andrew','brian','roger','steffan','ryan','thomas','david','mark','george','william','james','liam','noah'],
+};
+const VOICE_NOVELTY = /albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|junior|ralph|kathy|fred/i;
+// Voces 'Eloquence' de iOS: más robóticas, solo como respaldo si faltan voces de ese género
+const VOICE_ELOQ = { eddy:'male', reed:'male', rocko:'male', grandpa:'male', abuelo:'male', flo:'female', sandy:'female', shelley:'female', grandma:'female', abuela:'female' };
+const VOICE_GENDER = {};
+const deaccent=(x)=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const VOICE_DB_N={female:new Set(VOICE_DB.female.map(deaccent)),male:new Set(VOICE_DB.male.map(deaccent))};
+function voiceGenderOf(v){
+  const n=deaccent(v.name);
+  if(/\bfemale\b|femenin|mujer/.test(n)) return 'female';
+  if(/\bmale\b|masculin|hombre/.test(n)) return 'male';
+  const first=n.replace(/^(microsoft|google|apple)\s+/,'').split(/[\s(,-]/)[0];
+  if(VOICE_DB_N.female.has(first)) return 'female';
+  if(VOICE_DB_N.male.has(first)) return 'male';
+  if(/^google (español|us english)/.test(n)) return 'female';
+  return null;
+}
+function voiceScore(v){
+  const n=v.name||''; let sc=10;
+  if(/natural|neural/i.test(n)) sc+=40;
+  if(/premium/i.test(n)) sc+=35;
+  if(/enhanced|mejorad|siri/i.test(n)) sc+=25;
+  if(/online/i.test(n)) sc+=8;
+  if(/^google/i.test(n)) sc+=12;
+  const L=(v.lang||'').replace('_','-');
+  if(/^es-(ES|MX|CO|US|419)/i.test(L)) sc+=6;
+  if(/^en-(US|GB)/i.test(L)) sc+=6;
+  if(/compact/i.test(n)) sc-=10;
+  return sc;
+}
+function curateVoices(all){
+  const out=[], baseOf=v=>deaccent(v.name.replace(/\s*\(.*\)\s*$/,'').replace(/^(Microsoft|Google|Apple)\s+/i,'').split(' ')[0]);
+  for(const lang of ['es','en']){
+    const pool=(all||[]).filter(v=>deaccent(v.lang).startsWith(lang) && !VOICE_NOVELTY.test(deaccent(v.name))).sort((a,b)=>voiceScore(b)-voiceScore(a));
+    const used=new Set();
+    for(const g of ['female','male']){
+      let n=0;
+      const isEloq=v=>!!VOICE_ELOQ[baseOf(v)];
+      pool.filter(v=>!isEloq(v) && voiceGenderOf(v)===g).forEach(v=>{ const b=baseOf(v); if(n<2 && !used.has(b)){ used.add(b); VOICE_GENDER[v.name]=g; out.push(v); n++; } });
+      pool.filter(v=>isEloq(v) && VOICE_ELOQ[baseOf(v)]===g).forEach(v=>{ const b=baseOf(v); if(n<2 && !used.has(b)){ used.add(b); VOICE_GENDER[v.name]=g; out.push(v); n++; } });
+    }
+    // Si faltan (nombres desconocidos), completar con las mejores voces restantes del idioma
+    let have=out.filter(v=>deaccent(v.lang).startsWith(lang)).length;
+    pool.filter(v=>!VOICE_ELOQ[baseOf(v)]).forEach(v=>{ const b=baseOf(v); if(have<4 && !used.has(b)){ used.add(b); out.push(v); have++; } });
+  }
+  // Último recurso: si el sistema no tiene voces en español/inglés, mostrar lo que haya
+  if(!out.length) return (all||[]).filter(v=>!VOICE_NOVELTY.test(deaccent(v.name))).slice(0,8);
+  return out;
+}
+function voiceLabel(v){ return v.name.replace(/^Microsoft\s+/,'').replace(/\s+Online\s*\(Natural\)/i,' (natural)').replace(/\s*-\s*(Spanish|English).*$/i,''); }
+
+// Legacy compatibility for TTSBar
+const TTS_VOICES = LANG_GROUPS; // used for grid display only
+
+// ═══ TTS COMPONENT ═══
+function TTSBar({ text, onProgress }) {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [speed, setSpeed] = useState(1);
+  const [allVoices, setAllVoices] = useState([]);
+  const [selectedVoiceName, setSelectedVoiceName] = useState(() => LS.get('sq_tts_voicename',''));
+  const [showVoiceMenu, setShowVoiceMenu] = useState(false);
+  const uttRef = useRef(null);
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    function load() {
+      const v = window.speechSynthesis?.getVoices() || [];
+      if(v.length > 0) {
+        // Show ALL voices so user can see what's available, filter only Indo/etc
+        const filtered = curateVoices(v);
+        setAllVoices(filtered);
+        if(!LS.get('sq_tts_voicename','') || !v.some(x=>x.name===LS.get('sq_tts_voicename',''))) {
+          const def = filtered.find(x => x.lang.startsWith('es')) || filtered[0];
+          if(def) { setSelectedVoiceName(def.name); LS.set('sq_tts_voicename', def.name); }
+        }
+      }
+    }
+
+    // iOS Safari: voices load async, need multiple attempts
+    load();
+    window.speechSynthesis?.addEventListener('voiceschanged', load);
+
+    // Force iOS to load voices: speak empty utterance
+
+
+    // Retry every 300ms for 3 seconds (iOS needs this)
+    let attempts = 0;
+    const retry = setInterval(() => {
+      attempts++;
+      load();
+      if(attempts >= 10 || (window.speechSynthesis?.getVoices().length > 0)) {
+        clearInterval(retry);
+      }
+    }, 300);
+
+    const sync = () => setSelectedVoiceName(LS.get('sq_tts_voicename',''));
+    window.addEventListener('tts-voice-changed', sync);
+
+    return () => {
+      window.speechSynthesis?.removeEventListener('voiceschanged', load);
+      window.removeEventListener('tts-voice-changed', sync);
+      clearInterval(retry);
+    };
+  }, []);
+
+  const currentVoice = allVoices.find(v => v.name === selectedVoiceName) || (window.speechSynthesis?.getVoices()||[]).find(v => v.name === selectedVoiceName) || allVoices[0];
+
+  // Divide el texto en frases cortas: iOS falla con textos largos en un solo bloque
+  function chunkText(t){
+    const clean=(t||'').replace(/\s+/g,' ').trim(); if(!clean) return [];
+    const parts=clean.match(/[^.!?¡¿;:\n]+[.!?;:]*\s*/g)||[clean];
+    const out=[]; let buf='';
+    for(const raw of parts){
+      let piece=raw;
+      while(piece.length>220){ const cut=piece.lastIndexOf(' ',220)>60?piece.lastIndexOf(' ',220):220; if(buf){out.push(buf.trim());buf='';} out.push(piece.slice(0,cut).trim()); piece=piece.slice(cut); }
+      if((buf+piece).length>220){ if(buf.trim()) out.push(buf.trim()); buf=piece; } else buf+=piece;
+    }
+    if(buf.trim()) out.push(buf.trim());
+    return out;
+  }
+  const queueRef = useRef({chunks:[],i:0,run:0});
+  const [ttsError,setTtsError]=useState('');
+
+  function stopSpeech(){
+    queueRef.current.run++;
+    try{ window.speechSynthesis.cancel(); }catch(e){}
+    clearInterval(intervalRef.current);
+    setPlaying(false); setProgress(0);
+  }
+
+  function speakChunk(run){
+    const q=queueRef.current; const synth=window.speechSynthesis;
+    if(run!==q.run) return;
+    if(q.i>=q.chunks.length){ stopSpeech(); return; }
+    const utt=new SpeechSynthesisUtterance(q.chunks[q.i]);
+    const v=currentVoice || (window.speechSynthesis.getVoices()||[]).find(x=>x.lang&&x.lang.toLowerCase().startsWith('es'));
+    if(v){ utt.voice=v; utt.lang=v.lang; } else utt.lang='es-ES';
+    utt.rate=speed; utt.pitch=Math.min(2,Math.max(0.5,Number(LS.get('sq_tts_pitch',1))||1)); utt.volume=1;
+    utt.onend=()=>{ if(run!==q.run) return; q.i++; setProgress(Math.round(q.i/q.chunks.length*100)); if(onProgress) onProgress(q.i/q.chunks.length); speakChunk(run); };
+    utt.onerror=(e)=>{ if(run!==q.run) return; if(e&&(e.error==='interrupted'||e.error==='canceled')) return;
+      setTtsError('No se pudo reproducir la voz ('+(e&&e.error||'error')+'). Prueba con otra voz.'); stopSpeech(); };
+    uttRef.current=utt; // evita que el navegador lo libere antes de tiempo
+    synth.speak(utt);
+  }
+
+  function speak() {
+    const synth=window.speechSynthesis;
+    if(!synth || typeof SpeechSynthesisUtterance==='undefined'){ setTtsError('Este navegador no tiene voz. Abre la app en Safari.'); return; }
+    if(playing){ stopSpeech(); return; }
+    setTtsError('');
+    const chunks=chunkText(text);
+    if(!chunks.length) return;
+    try{ synth.cancel(); }catch(e){}
+    const q=queueRef.current; q.run++; q.chunks=chunks; q.i=0;
+    const run=q.run;
+    setPlaying(true); setProgress(0);
+    // Chrome de escritorio se pausa solo a los ~15 s; en iPhone pause/resume rompe la voz, así que solo fuera de iOS
+    clearInterval(intervalRef.current);
+    const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    if(!isIOS) intervalRef.current=setInterval(()=>{ if(synth.speaking&&!synth.paused){ synth.pause(); synth.resume(); } },10000);
+    // Debe llamarse dentro del toque del usuario (iOS lo exige): sin await ni setTimeout antes
+    speakChunk(run);
+    if(synth.paused) synth.resume();
+  }
+
+  function selectVoice(name) {
+    setSelectedVoiceName(name);
+    LS.set('sq_tts_voicename', name);
+    setShowVoiceMenu(false);
+    if(playing) stopSpeech();
+  }
+
+  useEffect(() => () => { queueRef.current.run++; try{window.speechSynthesis?.cancel();}catch(e){} clearInterval(intervalRef.current); }, []);
+  // Si cambia el texto (p. ej. al traducir), se detiene la lectura anterior
+  useEffect(() => { if(playing) stopSpeech(); }, [text]);
+
+  // Get accent flag for a voice
+  function voiceFlag(v) {
+    if(!v) return '🔊';
+    if(v.lang.startsWith('es-ES')||v.lang==='es_ES') return '🇪🇸';
+    if(v.lang.startsWith('es-MX')||v.lang==='es_MX') return '🇲🇽';
+    if(v.lang.startsWith('es-AR')) return '🇦🇷';
+    if(v.lang.startsWith('es-CO')) return '🇨🇴';
+    if(v.lang.startsWith('es-US')) return '🌎';
+    if(v.lang.startsWith('es')) return '🌍';
+    if(v.lang.startsWith('en-GB')||v.lang==='en_GB') return '🇬🇧';
+    if(v.lang.startsWith('en-AU')) return '🇦🇺';
+    if(v.lang.startsWith('en-US')||v.lang==='en_US') return '🇺🇸';
+    if(v.lang.startsWith('en')) return '🌐';
+    return '🔊';
+  }
+
+  const esVoices = allVoices.filter(v => v.lang.startsWith('es'));
+  const enVoices = allVoices.filter(v => v.lang.startsWith('en'));
+
+  return (
+    <>
+      {/* Compact single-row TTS bar */}
+      <div className="tts-bar" style={{padding:'10px 14px',gap:8}}>
+        {/* Play button */}
+        <button className="btn btn-primary btn-sm" onClick={speak} style={{flexShrink:0}}>
+          {playing ? '⏹' : '🔊'}
+        </button>
+
+        {/* Progress bar */}
+        <div className="tts-progress" style={{flex:1}}>
+          <div className="tts-fill" style={{width:`${progress}%`}}/>
+        </div>
+
+        {/* Speed toggle */}
+        <button className="btn btn-secondary btn-sm" onClick={()=>{ setSpeed(s=>s===1?1.25:s===1.25?1.5:s===1.5?0.85:1); if(playing) stopSpeech(); }} style={{flexShrink:0,minWidth:42,fontSize:13}}>
+          {speed}x
+        </button>
+
+        {/* Voice selector button — compact */}
+        <button
+          onClick={()=>setShowVoiceMenu(true)}
+          style={{flexShrink:0,display:'flex',alignItems:'center',gap:5,padding:'7px 12px',borderRadius:10,border:'1.5px solid rgba(6,182,212,0.4)',background:'rgba(6,182,212,0.1)',cursor:'pointer',fontSize:14,fontFamily:'Plus Jakarta Sans',fontWeight:700,color:'#67e8f9',whiteSpace:'nowrap'}}>
+          {voiceFlag(currentVoice)}
+          <span style={{fontSize:12,maxWidth:70,overflow:'hidden',textOverflow:'ellipsis'}}>
+            {currentVoice ? currentVoice.name.split(' ')[0] : 'Voz'}
+          </span>
+          <span style={{fontSize:11,color:'#475569'}}>▾</span>
+        </button>
+      </div>
+
+      {ttsError && <div style={{fontSize:13,color:'#fca5a5',margin:'-6px 0 12px',lineHeight:1.5}}>⚠️ {ttsError}</div>}
+
+      {/* Voice picker modal */}
+      {showVoiceMenu && (
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowVoiceMenu(false)}>
+          <div className="modal-sheet" style={{maxHeight:'70vh'}}>
+            <div className="modal-handle"/>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}}>
+              <div className="font-display" style={{fontWeight:800,fontSize:19,color:'var(--text)'}}>🔊 Seleccionar voz</div>
+              <button className="btn btn-secondary btn-sm" onClick={()=>setShowVoiceMenu(false)}>✕</button>
+            </div>
+
+            {allVoices.length === 0 && (
+              <div style={{padding:'14px',background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.25)',borderRadius:12,fontSize:14,color:'#fcd34d',lineHeight:1.8,marginBottom:12}}>
+                ⚠️ Cargando voces... si no aparecen:<br/>
+                <strong>iPhone:</strong> Ajustes → Accesibilidad → Contenido hablado → Voces<br/>
+                🇪🇸 Español (España) → descarga <em>Lucía</em> y <em>Jorge</em><br/>
+                🇲🇽 Español (México) → descarga <em>Paulina</em> y <em>Juan</em>
+              </div>
+            )}
+            {allVoices.length > 0 && esVoices.length === 0 && enVoices.length === 0 && (
+              <div style={{marginBottom:12}}>
+                <div style={{fontSize:13,color:'#f59e0b',fontWeight:700,marginBottom:10}}>Voces disponibles ({allVoices.length})</div>
+                {allVoices.map(v => {
+                  const active = selectedVoiceName === v.name;
+                  return (
+                    <button key={v.name} onClick={()=>selectVoice(v.name)}
+                      style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'13px 16px',borderRadius:12,border:`1.5px solid ${active?'#f59e0b':'var(--border)'}`,background:active?'rgba(245,158,11,0.12)':'var(--surface2)',cursor:'pointer',marginBottom:8,textAlign:'left'}}>
+                      <span style={{fontSize:20}}>🔊</span>
+                      <div style={{flex:1}}>
+                        <div className="font-display" style={{fontWeight:700,fontSize:15,color:active?'#fcd34d':'var(--text)'}}>{voiceLabel(v)}</div>
+                        <div style={{fontSize:13,color:'var(--muted)'}}>{v.lang}</div>
+                      </div>
+                      {active && <span style={{color:'#f59e0b',fontSize:18}}>✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {esVoices.length > 0 && (
+              <>
+                <div style={{fontSize:13,color:'#06b6d4',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',marginBottom:10}}>
+                  🌍 Español — {esVoices.length} voz(ces)
+                </div>
+                {esVoices.map(v => {
+                  const active = selectedVoiceName === v.name;
+                  const gender = guessGender(v.name);
+                  return (
+                    <button key={v.name} onClick={()=>selectVoice(v.name)}
+                      style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'13px 16px',borderRadius:12,border:`1.5px solid ${active?'#06b6d4':'var(--border)'}`,background:active?'rgba(6,182,212,0.12)':'var(--surface2)',cursor:'pointer',marginBottom:8,textAlign:'left',transition:'all 0.15s'}}>
+                      <span style={{fontSize:24}}>{voiceFlag(v)}</span>
+                      <span style={{fontSize:20}}>{gender==='female'?'👩':'👨'}</span>
+                      <div style={{flex:1}}>
+                        <div className="font-display" style={{fontWeight:700,fontSize:15,color:active?'#67e8f9':'var(--text)'}}>{v.name}</div>
+                        <div style={{fontSize:13,color:'var(--muted)',marginTop:2}}>{v.lang} · {gender==='female'?'Femenina':'Masculino'}</div>
+                      </div>
+                      {active && <span style={{color:'#22d3ee',fontSize:18,fontWeight:800}}>✓</span>}
+                    </button>
+                  );
+                })}
+              </>
+            )}
+
+            {enVoices.length > 0 && (
+              <>
+                <hr className="neon-sep"/>
+                <div style={{fontSize:13,color:'#f59e0b',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',marginBottom:10}}>
+                  🇬🇧🇺🇸 English — {enVoices.length} voice(s)
+                </div>
+                {enVoices.map(v => {
+                  const active = selectedVoiceName === v.name;
+                  const gender = guessGender(v.name);
+                  return (
+                    <button key={v.name} onClick={()=>selectVoice(v.name)}
+                      style={{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'13px 16px',borderRadius:12,border:`1.5px solid ${active?'#f59e0b':'var(--border)'}`,background:active?'rgba(245,158,11,0.12)':'var(--surface2)',cursor:'pointer',marginBottom:8,textAlign:'left',transition:'all 0.15s'}}>
+                      <span style={{fontSize:24}}>{voiceFlag(v)}</span>
+                      <span style={{fontSize:20}}>{gender==='female'?'👩':'👨'}</span>
+                      <div style={{flex:1}}>
+                        <div className="font-display" style={{fontWeight:700,fontSize:15,color:active?'#fcd34d':'var(--text)'}}>{voiceLabel(v)}</div>
+                        <div style={{fontSize:13,color:'var(--muted)',marginTop:2}}>{v.lang} · {gender==='female'?'Female':'Male'}</div>
+                      </div>
+                      {active && <span style={{color:'#f59e0b',fontSize:18,fontWeight:800}}>✓</span>}
+                    </button>
+                  );
+                })}
+              </>
+            )}
+
+            {esVoices.length < 2 && (
+              <div style={{marginTop:12,padding:'12px 14px',background:'rgba(6,182,212,0.06)',border:'1px solid rgba(6,182,212,0.2)',borderRadius:12,fontSize:13,color:'#67e8f9',lineHeight:1.8}}>
+                💡 Para más voces en tu iPhone:<br/>
+                Ajustes → Accesibilidad → Contenido hablado → Voces<br/>
+                🇪🇸 Español (España) → <em>Lucía</em> + <em>Jorge</em><br/>
+                🇲🇽 Español (México) → <em>Paulina</em> + <em>Juan</em>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+// ═══ PIXEL CITY ═══
+function PixelCity({ buildings, country, fireworks = false }) {
+  const wrapRef = useRef(null), canvasRef = useRef(null);
+  const items = buildings.map(b => (typeof b === 'string' ? { id: b, lvl: 2 } : { id: b.id, lvl: b.lvl || 2 }));
+  const key = items.map(i => i.id + ':' + i.lvl).join(',') + (fireworks ? '!' : '');
+  useEffect(() => {
+    const canvas = canvasRef.current, wrap = wrapRef.current; if (!canvas || !wrap) return;
+    const ctx = canvas.getContext('2d');
+    let raf = 0, W = 0, H = 0, last = 0, alive = true;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const size = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 3);
+      W = Math.max(260, Math.round(wrap.clientWidth || 320)); H = Math.round(Math.min(W * 0.62, 460));
+      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+      canvas.style.height = H + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    const draw = (sec) => { ctx.clearRect(0, 0, W, H); CityArt.scene(ctx, W, H, items, country, sec, { fireworks }); };
+    const frame = (ms) => { if (!alive) return; if (ms - last > 45) { last = ms; draw(ms / 1000); } raf = requestAnimationFrame(frame); };
+    size(); draw(0);
+    if (!reduce) raf = requestAnimationFrame(frame);
+    const ro = window.ResizeObserver ? new ResizeObserver(() => { size(); draw(last / 1000); }) : null;
+    if (ro) ro.observe(wrap);
+    return () => { alive = false; cancelAnimationFrame(raf); if (ro) ro.disconnect(); };
+  }, [key, country && country.id]);
+  return <div ref={wrapRef} style={{ width: '100%', lineHeight: 0 }}><canvas ref={canvasRef} id="pixel-city"/></div>;
+}
+
+function BuildingArt({ id, country, size = 52, dim = false, lvl = 2 }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const cv = ref.current; if (!cv) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
+    cv.width = Math.round(size * dpr); cv.height = Math.round(size * dpr);
+    const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    CityArt.thumb(c, size, id, country, 2, lvl || 2);
+  }, [id, size, lvl, country && country.id]);
+  return <canvas ref={ref} role="img" aria-label={WORLD_BUILDINGS[id]?.label || id}
+    style={{ width: size, height: size, display: 'block', borderRadius: size * 0.18, filter: dim ? 'grayscale(1) brightness(0.55)' : 'none', flexShrink: 0 }}/>;
+}
+
+const LEVEL_NAMES = ['Sin construir', 'En construcción', 'Terminado', 'De lujo'];
+
+function LevelDots({ lvl, color }) {
+  return <div style={{ display: 'flex', gap: 4 }}>{[1, 2, 3].map(i => (
+    <span key={i} style={{ width: 9, height: 9, borderRadius: 5, background: i <= lvl ? color : 'transparent', border: `1.5px solid ${i <= lvl ? color : '#475569'}` }}/>
+  ))}</div>;
+}
+
+// ═══ MUNDO — continentes, países, edificios con 3 niveles ═══
+function ConquestScreen({ tokens, city, conquests, milestones, onUpgrade }) {
+  const firstOpen = (cont) => WORLD_COUNTRIES.find(c => c.continent === cont && !conquests.includes(c.id)) || WORLD_COUNTRIES.find(c => c.continent === cont);
+  const unlockedConts = CONTINENTS.filter(ct => continentUnlocked(ct, conquests));
+  const defaultCont = [...unlockedConts].reverse().find(ct => WORLD_COUNTRIES.some(c => c.continent === ct.id && !conquests.includes(c.id))) || unlockedConts[0];
+  const [contId, setContId] = useState(() => LS.get('sq_ui_cont', defaultCont.id));
+  const [countryId, setCountryId] = useState(() => LS.get('sq_ui_country', null));
+  const cont = CONTINENTS.find(c => c.id === contId) || defaultCont;
+  const contOpen = continentUnlocked(cont, conquests);
+  const countries = WORLD_COUNTRIES.filter(c => c.continent === cont.id);
+  const country = countries.find(c => c.id === countryId) || firstOpen(cont.id);
+  useEffect(() => { LS.set('sq_ui_cont', cont.id); }, [cont.id]);
+  useEffect(() => { if (country) LS.set('sq_ui_country', country.id); }, [country && country.id]);
+
+  const levels = city[country.id] || {};
+  const pct = countryPct(city, country);
+  const conquered = conquests.includes(country.id);
+  const done = milestones[country.id] || [];
+  const nextMs = MILESTONES.find(m => !done.includes(m.pct));
+  const scene = country.buildings.filter(b => levels[b] > 0).map(b => ({ id: b, lvl: levels[b] }));
+  const contConq = (ct) => WORLD_COUNTRIES.filter(c => c.continent === ct.id && conquests.includes(c.id)).length;
+  const contTotal = (ct) => WORLD_COUNTRIES.filter(c => c.continent === ct.id).length;
+
+  return (
+    <div className="scroll-area fade-up">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+        <div>
+          <div className="font-display" style={{ fontSize: 27, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>🌍 Mundo</div>
+          <div style={{ fontSize: 17, color: 'var(--muted)' }}>{conquests.length}/{WORLD_COUNTRIES.length} países conquistados</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div className="font-display grad-gold" style={{ fontSize: 26, fontWeight: 800, lineHeight: 1 }}>{tokens}</div>
+          <div style={{ fontSize: 17, color: 'var(--muted)' }}>StudyTokens</div>
+        </div>
+      </div>
+
+      {/* Continentes */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 12 }}>
+        {CONTINENTS.map(ct => {
+          const open = continentUnlocked(ct, conquests), active = ct.id === cont.id;
+          return (
+            <button key={ct.id} onClick={() => { setContId(ct.id); setCountryId(null); }}
+              style={{ padding: '8px 4px', borderRadius: 14, border: `2px solid ${active ? '#06b6d4' : 'transparent'}`, background: active ? 'rgba(6,182,212,0.12)' : 'var(--surface2)', cursor: 'pointer', opacity: open ? 1 : 0.55 }}>
+              <div style={{ fontSize: 20 }}>{open ? ct.emoji : '🔒'}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: active ? '#67e8f9' : 'var(--text)', fontFamily: 'Plus Jakarta Sans' }}>{ct.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)' }}>{contConq(ct)}/{contTotal(ct)}</div>
+            </button>
+          );
+        })}
+      </div>
+
+      {!contOpen ? (
+        <div className="glass-card" style={{ padding: 24, textAlign: 'center' }}>
+          <div style={{ fontSize: 44, marginBottom: 8 }}>🔒</div>
+          <div className="font-display" style={{ fontWeight: 800, fontSize: 20, color: 'var(--text)', marginBottom: 6 }}>{cont.name} está bloqueado</div>
+          <div style={{ fontSize: 16, color: 'var(--muted)', lineHeight: 1.6 }}>
+            Conquista {cont.unlock.conquests} países de {CONTINENTS.find(c => c.id === cont.unlock.from).name} para desbloquearlo.<br/>
+            Llevas {contConq(CONTINENTS.find(c => c.id === cont.unlock.from))}.
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginTop: 16 }}>
+            {countries.map(c => <span key={c.id} style={{ fontSize: 26, filter: 'grayscale(0.6)' }} title={c.name}>{c.flag}</span>)}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Países del continente */}
+          <div style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 14, paddingBottom: 4 }}>
+            {countries.map(c => {
+              const p = countryPct(city, c), isC = conquests.includes(c.id), act = c.id === country.id;
+              return (
+                <button key={c.id} onClick={() => setCountryId(c.id)}
+                  style={{ flexShrink: 0, padding: '7px 12px', borderRadius: 20, border: `2px solid ${act ? c.color : 'transparent'}`, background: isC ? `${c.color}22` : act ? `${c.color}11` : 'var(--surface2)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 17 }}>{c.flag}</span>
+                  <span style={{ fontSize: 15, fontWeight: 700, color: act || isC ? c.color : '#94a3b8', fontFamily: 'Plus Jakarta Sans' }}>{c.name}</span>
+                  <span style={{ fontSize: 12, color: 'var(--muted)' }}>{isC ? '🏆' : p + '%'}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Cabecera del país con % de edificación */}
+          <div style={{ background: `linear-gradient(135deg,${country.color}22,${country.color}08)`, border: `1px solid ${country.color}44`, borderRadius: 20, padding: 16, marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <div>
+                <div className="font-display" style={{ fontWeight: 800, fontSize: 21, color: 'var(--text)' }}>{country.flag} {country.name}</div>
+                <div style={{ fontSize: 15, color: 'var(--muted)' }}>{country.description}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div className="font-display" style={{ fontSize: 28, fontWeight: 800, color: country.color, lineHeight: 1 }}>{pct}%</div>
+                <div style={{ fontSize: 13, color: 'var(--muted)' }}>edificado</div>
+              </div>
+            </div>
+            <div style={{ position: 'relative', height: 10, background: 'rgba(51,65,85,0.5)', borderRadius: 6, marginBottom: 6 }}>
+              <div style={{ position: 'absolute', inset: 0, width: `${pct}%`, background: `linear-gradient(90deg,${country.color},${country.color}bb)`, borderRadius: 6, transition: 'width .6s', boxShadow: `0 0 10px ${country.color}66` }}/>
+              {MILESTONES.map(m => (
+                <div key={m.pct} style={{ position: 'absolute', left: `calc(${m.pct}% - 9px)`, top: -6, width: 18, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>
+                  {m.pct === 100 ? '🏆' : done.includes(m.pct) ? '✅' : '🎁'}
+                </div>
+              ))}
+            </div>
+            <div style={{ fontSize: 14, color: 'var(--muted)', marginTop: 10 }}>
+              {conquered ? (pct < 100 ? '🏆 Conquistado · mejora a "lujo" para completar el 100 %' : '🏆 ¡Conquistado al 100 %!') :
+                nextMs ? `Próximo bono: +${nextMs.bonus} 🪙 al ${nextMs.pct}%` : ''}
+            </div>
+          </div>
+
+          {/* Escena */}
+          <div style={{ marginBottom: 14, borderRadius: 16, overflow: 'hidden', border: `1px solid ${country.color}33`, boxShadow: `0 0 20px ${country.color}15` }}>
+            {scene.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '36px 20px', background: 'var(--surface2)' }}>
+                <div style={{ fontSize: 36, marginBottom: 8 }}>{country.flag}</div>
+                <div className="font-display" style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)', marginBottom: 4 }}>Terreno libre</div>
+                <div style={{ fontSize: 15, color: 'var(--muted)' }}>Construye tu primer edificio en {country.name}</div>
+              </div>
+            ) : <PixelCity buildings={scene} country={country} fireworks={conquered && pct >= 100}/>}
+          </div>
+
+          {/* Edificios con niveles */}
+          <div className="glass-card" style={{ padding: 14, marginBottom: 14 }}>
+            <div className="font-display" style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)', marginBottom: 4 }}>Edificios</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 10 }}>Cada edificio tiene 3 niveles: en construcción, terminado y de lujo.</div>
+            {country.buildings.map(bid => {
+              const def = WORLD_BUILDINGS[bid], lvl = levels[bid] || 0, max = lvl >= MAX_LVL;
+              const cost = max ? 0 : levelCost(bid, lvl + 1), can = tokens >= cost;
+              return (
+                <div key={bid} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid rgba(51,65,85,0.3)' }}>
+                  <BuildingArt id={bid} country={country} size={58} lvl={Math.max(1, lvl)} dim={lvl === 0}/>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="font-display" style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{def.label}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                      <LevelDots lvl={lvl} color={country.color}/>
+                      <span style={{ fontSize: 12, color: 'var(--muted)' }}>{LEVEL_NAMES[lvl]}</span>
+                    </div>
+                  </div>
+                  {max ? <span style={{ fontSize: 13, color: '#fcd34d', fontWeight: 700 }}>★ Máx.</span> : (
+                    <button className={`btn btn-sm ${can ? 'btn-gold' : 'btn-secondary'}`} disabled={!can} onClick={() => onUpgrade(country, bid)}
+                      style={{ flexShrink: 0, minWidth: 92, flexDirection: 'column', lineHeight: 1.1, padding: '6px 10px' }}>
+                      <span style={{ fontSize: 13 }}>{lvl === 0 ? 'Construir' : 'Mejorar'}</span>
+                      <span style={{ fontSize: 12, opacity: 0.85 }}>{cost} 🪙</span>
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Resumen del continente */}
+          <div className="glass-card" style={{ padding: 16 }}>
+            <div className="font-display" style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)', marginBottom: 10 }}>{cont.emoji} {cont.name}</div>
+            {countries.map(c => {
+              const p = countryPct(city, c), isC = conquests.includes(c.id);
+              return (
+                <div key={c.id} onClick={() => setCountryId(c.id)} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', cursor: 'pointer' }}>
+                  <span style={{ fontSize: 20 }}>{c.flag}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: isC ? c.color : 'var(--text)' }}>{c.name}</span>
+                      <span style={{ fontSize: 14, color: 'var(--muted)' }}>{isC ? '🏆 ' : ''}{p}%</span>
+                    </div>
+                    <div className="progress-track" style={{ height: 5 }}>
+                      <div style={{ height: '100%', background: c.color, opacity: isC ? 1 : 0.7, borderRadius: 3, width: `${p}%`, transition: 'width .4s' }}/>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ConquestCelebration({ data, onClose }) {
+  if (!data) return null;
+  const { country, bonus } = data;
+  const items = country.buildings.map(b => ({ id: b, lvl: 3 }));
+  return (
+    <div className="modal-overlay" style={{ alignItems: 'center', zIndex: 300 }} onClick={onClose}>
+      <div style={{ width: 'calc(100% - 32px)', maxWidth: 520, background: 'linear-gradient(180deg,#0f172a,#07111f)', borderRadius: 24, overflow: 'hidden', border: `1px solid ${country.color}66`, boxShadow: `0 0 60px ${country.color}55` }}>
+        <PixelCity buildings={items} country={country} fireworks/>
+        <div style={{ padding: 22, textAlign: 'center' }}>
+          <div style={{ fontSize: 15, color: country.color, fontWeight: 800, letterSpacing: 1, textTransform: 'uppercase' }}>¡Conquista!</div>
+          <div className="font-display" style={{ fontWeight: 800, fontSize: 26, color: '#f1f5f9', margin: '4px 0 6px' }}>{country.flag} {country.name}</div>
+          <div className="font-display grad-gold" style={{ fontSize: 30, fontWeight: 800 }}>+{bonus} 🪙</div>
+          <div style={{ fontSize: 15, color: '#94a3b8', margin: '8px 0 16px' }}>Medalla de {country.name} conseguida 🏅</div>
+          <button className="btn btn-primary btn-full" onClick={onClose}>¡Seguir construyendo!</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ═══ SHARED ═══
+function Toast({message,type='success',onDone}){useEffect(()=>{const t=setTimeout(onDone,3500);return()=>clearTimeout(t);},[]);return <div className={`toast ${type}`}>{message}</div>;}
+function Spinner({text='Procesando'}){return(<span style={{display:'inline-flex',alignItems:'center',gap:8,color:'#64748b',fontSize:19}}><span className="spin" style={{width:15,height:15,border:'2px solid #1e293b',borderTopColor:'#06b6d4',borderRadius:'50%',display:'inline-block'}}/>{text}<span className="loading-dots"><span>.</span><span>.</span><span>.</span></span></span>);}
+const Icons={
+  Home:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>,
+  Book:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>,
+  Globe:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>,
+  Chart:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>,
+  Settings:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
+  Check:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>,
+  X:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>,
+  Refresh:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>,
+  Upload:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>,
+  Arrow:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/></svg>,
+  Eye:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>,
+  Moon:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>,
+  Sun:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>,
+  Download:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>,
+  Trash:()=><svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>,
+};
+
+// ═══ STATS SCREEN ═══
+function StatsScreen({ books, progress, tokens, feynmanNotes, conquests, streak, stats: usage, deck, city }) {
+  const totalChapters = books.reduce((a,b)=>a+(b.chapters?.length||0),0);
+  const completedChapters = Object.keys(progress||{}).length;
+  const totalWords = books.reduce((a,b)=>a+(b.chapters||[]).reduce((c,ch)=>c+(ch.words||0),0),0);
+  const countriesConquered = (conquests||[]).length;
+  const today = new Date().toDateString();
+  const st = usage || {};
+
+  const stats = [
+    { icon:'📚', label:'Libros cargados', value:books.length, color:'#06b6d4' },
+    { icon:'✅', label:'Capítulos leídos', value:completedChapters, color:'#10b981' },
+    { icon:'📝', label:'Palabras estudiadas', value:totalWords.toLocaleString(), color:'#8b5cf6' },
+    { icon:'🏆', label:'Tokens totales', value:tokens, color:'#f59e0b' },
+    { icon:'🌍', label:'Países conquistados', value:countriesConquered, color:'#ef4444' },
+    { icon:'🧠', label:'Análisis Feynman', value:(feynmanNotes||[]).length, color:'#ec4899' },
+    { icon:'🔥', label:'Mejor racha (días)', value:(streak&&streak.best)||0, color:'#f97316' },
+    { icon:'⏱️', label:'Minutos leídos', value:st.minutes||0, color:'#22d3ee' },
+    { icon:'🃏', label:'Tarjetas en repaso', value:(deck||[]).length, color:'#a78bfa' },
+    { icon:'🎙️', label:'Explicaciones por voz', value:st.voice||0, color:'#34d399' },
+    ...(()=>{ const log=Object.values(LS.get('sq_readlog',{})||{}).filter(x=>x.passed); const w=log.filter(x=>x.wpm).map(x=>x.wpm);
+      return [{ icon:'✅', label:'Lecturas verificadas', value:log.length, color:'#10b981' }, { icon:'⚡', label:'Velocidad media (ppm)', value:w.length?Math.round(w.reduce((a,b)=>a+b,0)/w.length):'—', color:'#eab308' }]; })(),
+  ];
+
+  return (
+    <div className="scroll-area fade-up">
+      <div style={{marginBottom:24}}>
+        <div className="font-display" style={{fontSize:27,fontWeight:800,color:'var(--text)',marginBottom:4}}>📊 Estadísticas</div>
+        <div style={{fontSize:19,color:'var(--muted)'}}>Tu progreso de aprendizaje</div>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:20}}>
+        {stats.map(s=>(
+          <div key={s.label} className="stat-card">
+            <div style={{fontSize:26,marginBottom:6}}>{s.icon}</div>
+            <div className="font-display" style={{fontWeight:800,fontSize:20,color:s.color}}>{s.value}</div>
+            <div style={{fontSize:19,color:'var(--muted)',marginTop:2,lineHeight:1.3}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Progress por libro */}
+      {books.length>0 && (
+        <div className="glass-card" style={{padding:18,marginBottom:16}}>
+          <div className="font-display" style={{fontWeight:800,fontSize:19,color:'var(--text)',marginBottom:14}}>Progreso por libro</div>
+          {books.map((book,i)=>{
+            const done=book.chapters?.filter(ch=>progress?.[`${book.id}_${ch.id}`]).length||0;
+            const total=book.chapters?.length||1;
+            const pct=Math.round((done/total)*100);
+            return(
+              <div key={book.id} style={{marginBottom:14}}>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}>
+                  <span style={{fontSize:19,color:'var(--text)',fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1}}>{book.title}</span>
+                  <span className="badge badge-cyan">{pct}%</span>
+                </div>
+                <div className="progress-track">
+                  <div className="progress-fill-cyan" style={{width:`${pct}%`}}/>
+                </div>
+                <div style={{fontSize:19,color:'var(--muted)',marginTop:4}}>{done}/{total} capítulos</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Feynman notes */}
+      {feynmanNotes?.length>0 && (
+        <div className="glass-card" style={{padding:18,marginBottom:16}}>
+          <div className="font-display" style={{fontWeight:800,fontSize:19,color:'var(--text)',marginBottom:14}}>Últimos análisis Feynman</div>
+          {feynmanNotes.slice(-3).reverse().map((n,i)=>(
+            <div key={i} style={{padding:'10px 14px',background:'var(--surface)',borderRadius:10,marginBottom:8,border:'1px solid var(--border)'}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                <span style={{fontSize:18,fontWeight:700,color:'var(--text)'}}>{n.chapter}</span>
+                <span style={{fontSize:18,color:n.score>=80?'#6ee7b7':n.score>=60?'#67e8f9':'#fca5a5',fontWeight:700}}>{n.score}/100</span>
+              </div>
+              <div style={{fontSize:19,color:'var(--muted)'}}>{new Date(n.date).toLocaleDateString('es-ES')}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Países conquistados */}
+      {conquests?.length>0 && (
+        <div className="glass-card" style={{padding:18}}>
+          <div className="font-display" style={{fontWeight:800,fontSize:19,color:'var(--text)',marginBottom:14}}>🏅 Medallas de países</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+            {conquests.map(cid=>{const c=EUROPEAN_COUNTRIES.find(x=>x.id===cid);return c?(<span key={cid} style={{fontSize:24}} title={c.name}>{c.flag}</span>):null;})}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══ LIBRARY SCREEN (multi-book) ═══
+function LibraryScreen({ books, activeBookId, onBookLoad, onSelectBook, onDeleteBook, onChapterSelect, progress }) {
+  const [loading,setLoading]=useState(false);
+  const [error,setError]=useState('');
+  const [showBooks,setShowBooks]=useState(false);
+  const fileRef=useRef(null);
+
+  const activeBook = books.find(b=>b.id===activeBookId) || books[0];
+
+  async function handleFile(e){
+    const file=e.target.files[0]; if(!file)return;
+    setLoading(true); setError('');
+    try{
+      const text=await extractTextFromFile(file);
+      const chapters=isMarkdownFile(file)?splitMarkdownChapters(text):splitIntoChapters(text);
+      if(!chapters.length) throw new Error('No se detectaron capítulos.');
+      const newBook={ id:Date.now(), title:file.name.replace(/\.[^.]+$/,''), chapters, loadedAt:Date.now() };
+      onBookLoad(newBook);
+    }catch(err){setError(err.message);}finally{setLoading(false); e.target.value='';}
+  }
+
+  const bookProgress=(book)=>{
+    const done=book.chapters?.filter(ch=>progress?.[`${book.id}_${ch.id}`]).length||0;
+    return {done, total:book.chapters?.length||0, pct:Math.round((done/(book.chapters?.length||1))*100)};
+  };
+
+  return(
+    <div className="scroll-area fade-up">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+        <div>
+          <div className="font-display" style={{fontSize:27,fontWeight:800,color:'var(--text)',marginBottom:4}}>📚 Biblioteca</div>
+          <div style={{fontSize:19,color:'var(--muted)'}}>{books.length} libro(s) cargado(s)</div>
+        </div>
+        <div style={{display:'flex',gap:8}}>
+          {books.length>1&&<button className="btn btn-secondary btn-sm" onClick={()=>setShowBooks(true)}>📂 Mis libros</button>}
+          <button className="btn btn-primary btn-sm" onClick={()=>fileRef.current.click()} disabled={loading}>
+            {loading?<Spinner text=""/>:<><Icons.Upload/> Añadir</>}
+          </button>
+        </div>
+      </div>
+      <input ref={fileRef} type="file" accept=".md,.markdown,.txt,.pdf,.epub,text/markdown,text/plain,application/pdf" style={{display:'none'}} onChange={handleFile}/>
+
+      {books.length===0&&(
+        <div className="glass-card" style={{padding:36,textAlign:'center'}}>
+          <div style={{fontSize:52,marginBottom:16}}>📖</div>
+          <div className="font-display" style={{fontWeight:800,fontSize:20,color:'var(--text)',marginBottom:8}}>Sin libros cargados</div>
+          <div style={{fontSize:19,color:'var(--muted)',marginBottom:24}}>Markdown (.md) recomendado · también TXT o PDF</div>
+          <button className="btn btn-primary btn-lg" onClick={()=>fileRef.current.click()}><Icons.Upload/> Cargar primer libro</button>
+          {error&&<div style={{color:'#fca5a5',fontSize:18,marginTop:14}}>{error}</div>}
+        </div>
+      )}
+
+      {activeBook&&(
+        <>
+          <div className="glass-card" style={{padding:18,marginBottom:16}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
+              <div style={{flex:1,minWidth:0}}>
+                <div className="font-display" style={{fontWeight:800,fontSize:18,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{activeBook.title}</div>
+                <div style={{fontSize:18,color:'var(--muted)',marginTop:3}}>
+                  {bookProgress(activeBook).done}/{bookProgress(activeBook).total} capítulos · <span style={{color:'#10b981'}}>{bookProgress(activeBook).pct}% completado</span>
+                </div>
+              </div>
+            </div>
+            <div className="progress-track">
+              <div className="progress-fill-cyan" style={{width:`${bookProgress(activeBook).pct}%`}}/>
+            </div>
+          </div>
+
+          {activeBook.chapters?.map((ch,idx)=>{
+            const done=progress?.[`${activeBook.id}_${ch.id}`];
+            return(
+              <div key={ch.id} className={`chapter-item ${done?'completed':''}`} onClick={()=>onChapterSelect(ch,activeBook)}>
+                <div style={{width:36,height:36,borderRadius:10,background:done?'rgba(16,185,129,0.12)':'rgba(15,23,42,0.8)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,border:`1px solid ${done?'rgba(16,185,129,0.4)':'rgba(51,65,85,0.5)'}`}}>
+                  {done?<span style={{color:'#6ee7b7',fontSize:18}}>✓</span>:<span className="font-display" style={{color:'#475569',fontSize:19,fontWeight:700}}>{idx+1}</span>}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div className="font-display" style={{fontWeight:700,fontSize:19,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{ch.title}</div>
+                  <div style={{fontSize:19,color:'var(--muted)',marginTop:2}}>{ch.words?.toLocaleString()} palabras</div>
+                </div>
+                <span style={{color:'#334155'}}><Icons.Arrow/></span>
+              </div>
+            );
+          })}
+        </>
+      )}
+
+      {/* Books modal */}
+      {showBooks&&(
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowBooks(false)}>
+          <div className="modal-sheet">
+            <div className="modal-handle"/>
+            <div className="font-display" style={{fontWeight:800,fontSize:18,color:'var(--text)',marginBottom:16}}>📂 Mis libros</div>
+            {books.map(book=>{
+              const {done,total,pct}=bookProgress(book);
+              return(
+                <div key={book.id} style={{padding:'14px 16px',background:'var(--surface)',borderRadius:14,border:`1px solid ${book.id===activeBookId?'rgba(6,182,212,0.4)':'rgba(51,65,85,0.4)'}`,marginBottom:8}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:8}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div className="font-display" style={{fontWeight:700,fontSize:18,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{book.title}</div>
+                      <div style={{fontSize:19,color:'var(--muted)'}}>{done}/{total} capítulos · {pct}%</div>
+                    </div>
+                    <button className="btn btn-danger btn-sm" onClick={()=>{onDeleteBook(book.id);}} style={{marginLeft:8,padding:'4px 8px'}}>
+                      <Icons.Trash/>
+                    </button>
+                  </div>
+                  <div className="progress-track" style={{marginBottom:8}}>
+                    <div className="progress-fill-cyan" style={{width:`${pct}%`}}/>
+                  </div>
+                  <button className="btn btn-primary btn-sm btn-full" onClick={()=>{onSelectBook(book.id);setShowBooks(false);}}>
+                    {book.id===activeBookId?'Leyendo actualmente':'Seleccionar'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══ READER SCREEN ═══
+function ReaderScreen({chapter,book,apiKey,ai,onEarnTokens,onComplete,alreadyDone,onSaveFeynman,onStudy=()=>{},onAddCards=()=>{}}){
+  const [tab,setTab]=useState('read');
+  const cacheKey=`${book?.id||'b'}_${chapter.id}`;
+  const [translation,setTranslation]=useState(()=>AICache.get(cacheKey)?.translation||'');
+  const [translating,setTranslating]=useState(false);
+  const [flashcards,setFlashcards]=useState([]);
+  const [flashLoading,setFlashLoading]=useState(false);
+  const [currentCard,setCurrentCard]=useState(0);
+  const [cardFlipped,setCardFlipped]=useState(false);
+  const [cardResults,setCardResults]=useState({});
+  const [feynmanText,setFeynmanText]=useState('');
+  const [feynmanResult,setFeynmanResult]=useState(null);
+  const [feynmanLoading,setFeynmanLoading]=useState(false);
+  const [quiz,setQuiz]=useState(null);
+  const [quizLoading,setQuizLoading]=useState(false);
+  const [quizAnswers,setQuizAnswers]=useState({});
+  const [quizDone,setQuizDone]=useState(false);
+  const [reasoningAnswers,setReasoningAnswers]=useState({});
+  const [reasoningResults,setReasoningResults]=useState({});
+  const [reasoningLoading,setReasoningLoading]=useState({});
+  const [toast,setToast]=useState(null);
+  const [earnedRead,setEarnedRead]=useState(false);
+
+  const showToast=(msg,type='success')=>setToast({msg,type,key:Date.now()});
+  const displayText = translation || chapter.content;
+
+  // ═══ LECTURA VERIFICADA ═══
+  const rkey=`${book?.id||'b'}_${chapter.id}`;
+  const words=chapter.words||chapter.content.split(/\s+/).filter(Boolean).length;
+  const minSecs=Math.max(30,Math.round(words/READ.FAST_WPM*60));
+  const estMin=Math.max(1,Math.round(words/READ.EST_WPM));
+  const paraO=chapter.content.split('\n\n'), paraT=translation?translation.split('\n\n'):[];
+  const blank=()=>({secs:0,seenO:[],seenT:[],tts:0,tests:[],passed:false,retryAt:0,nextCheck:0});
+  const [rlog,setRlog]=useState(()=>({...blank(),...((LS.get('sq_readlog',{})||{})[rkey]||{})}));
+  const rlogRef=useRef(rlog); rlogRef.current=rlog;
+  const saveLog=(upd)=>{ setRlog(prev=>{ const nx={...prev,...(typeof upd==='function'?upd(prev):upd)}; const all=LS.get('sq_readlog',{})||{}; all[rkey]=nx; LS.set('sq_readlog',all); return nx; }); };
+  const [attention,setAttention]=useState(false);
+  const attRef=useRef(false); attRef.current=attention;
+  const tabRef=useRef(tab); tabRef.current=tab;
+  const lastAct=useRef(Date.now());
+  const studyRef=useRef(onStudy); studyRef.current=onStudy;
+  const minuteAcc=useRef(0);
+  useEffect(()=>{
+    const bump=()=>{ lastAct.current=Date.now(); };
+    const evs=['scroll','touchstart','pointerdown','keydown','wheel'];
+    evs.forEach(e=>window.addEventListener(e,bump,{passive:true,capture:true}));
+    if(!rlogRef.current.nextCheck) saveLog(p=>({nextCheck:p.secs+READ.CHECK_MIN+Math.round(Math.random()*(READ.CHECK_MAX-READ.CHECK_MIN))}));
+    const iv=setInterval(()=>{
+      if(tabRef.current!=='read' || attRef.current || document.visibilityState!=='visible') return;
+      const speaking=window.speechSynthesis&&window.speechSynthesis.speaking;
+      if(!(speaking || Date.now()-lastAct.current<45000)) return;
+      const cur=rlogRef.current;
+      if(cur.nextCheck && cur.secs>=cur.nextCheck){ setAttention(true); return; }
+      saveLog(p=>({secs:p.secs+5}));
+      minuteAcc.current+=5; if(minuteAcc.current>=60){ minuteAcc.current=0; studyRef.current('minute'); }
+    },5000);
+    return ()=>{ clearInterval(iv); evs.forEach(e=>window.removeEventListener(e,bump,{capture:true})); };
+  },[rkey]);
+  function confirmAttention(){
+    setAttention(false); lastAct.current=Date.now();
+    saveLog(p=>({nextCheck:p.secs+READ.CHECK_MIN+Math.round(Math.random()*(READ.CHECK_MAX-READ.CHECK_MIN))}));
+  }
+  // Párrafos que ya pasaron por la pantalla (su parte superior llegó al 85 % de la altura visible)
+  const textRef=useRef(null);
+  useEffect(()=>{
+    const el=textRef.current; if(!el) return;
+    const field=translation?'seenT':'seenO';
+    let raf=0;
+    const scan=()=>{ raf=0;
+      const lim=window.innerHeight*0.85, idx=[];
+      el.querySelectorAll('p[data-i]').forEach(p=>{ if(p.getBoundingClientRect().top<lim) idx.push(+p.dataset.i); });
+      if(!idx.length) return;
+      saveLog(pr=>{ const set=new Set(pr[field]||[]); let ch=false; idx.forEach(i=>{ if(!set.has(i)){ set.add(i); ch=true; } }); return ch?{[field]:[...set]}:{}; });
+    };
+    const onScroll=()=>{ if(!raf) raf=requestAnimationFrame(scan); };
+    window.addEventListener('scroll',onScroll,{passive:true,capture:true});
+    const t=setTimeout(scan,600);
+    return ()=>{ window.removeEventListener('scroll',onScroll,{capture:true}); clearTimeout(t); if(raf) cancelAnimationFrame(raf); };
+  },[rkey,translation,tab]);
+  const covO=paraO.length?(rlog.seenO||[]).length/paraO.length:0;
+  const covT=paraT.length?(rlog.seenT||[]).length/paraT.length:0;
+  const coverage=Math.min(1,Math.max(covO,covT,rlog.tts||0));
+  const seenWords=Math.round(words*coverage);
+  const tooFast=rlog.secs>=10 && seenWords>(rlog.secs/60)*READ.MAX_WPM+120 && !rlog.passed;
+  const timeOk=rlog.secs>=minSecs, covOk=coverage>=READ.COVERAGE, retryOk=rlog.secs>=(rlog.retryAt||0);
+  const canTest=timeOk&&covOk&&retryOk&&!rlog.passed&&!alreadyDone;
+  const fmt=(x)=>`${Math.floor(x/60)}:${String(Math.floor(x%60)).padStart(2,'0')}`;
+  const wpm=rlog.secs>30?Math.round(seenWords/(rlog.secs/60)):0;
+  // Test de comprensión
+  const [test,setTest]=useState(null); // {questions, answers, done, score}
+  const [testLoading,setTestLoading]=useState(false);
+  async function startTest(){
+    if(!ai){ finishVerified(null,'Verificado por tiempo y avance (sin IA)'); return; }
+    setTestLoading(true);
+    try{
+      const raw=await callClaude({apiKey,...PROMPTS.comprehension(displayText)});
+      const j=JSON.parse(raw.replace(/```json?|```/g,'').trim());
+      const qs=(j.questions||[]).slice(0,3).map(q=>{ const ord=q.options.map((o,i)=>({o,i})).sort(()=>Math.random()-0.5); return {q:q.q,why:q.why,options:ord.map(x=>x.o),correct:ord.findIndex(x=>x.i===q.correct)}; });
+      if(qs.length<2) throw new Error('Preguntas incompletas');
+      setTest({questions:qs,answers:{},done:false,score:0});
+    }catch(err){ showToast('No se pudo crear el test: '+err.message,'error'); }
+    finally{ setTestLoading(false); }
+  }
+  function submitTest(){
+    const qs=test.questions, score=qs.filter((q,i)=>test.answers[i]===q.correct).length;
+    const passed=score>=Math.min(READ.PASS,qs.length);
+    setTest({...test,done:true,score});
+    saveLog(p=>({tests:[...(p.tests||[]),{date:Date.now(),score,of:qs.length,secs:p.secs}]}));
+    if(passed) finishVerified(score,`Test ${score}/${qs.length}`);
+    else saveLog(p=>({retryAt:p.secs+120}));
+  }
+  function finishVerified(score,label){
+    saveLog({passed:true,verifiedAt:Date.now(),wpm});
+    markRead();
+    if(score!==null && test && score===test.questions.length) setTimeout(()=>onEarnTokens(READ.PERFECT_BONUS,'🎯 Comprensión perfecta'),900);
+  }
+  const ttsProgress=(f)=>{ if(f>(rlogRef.current.tts||0)) saveLog({tts:f}); };
+
+  // 🎙️ Feynman por voz (dictado)
+  const SR = typeof window!=='undefined' ? (window.SpeechRecognition||window.webkitSpeechRecognition) : null;
+  const recRef = useRef(null);
+  const [listening,setListening]=useState(false);
+  const [usedVoice,setUsedVoice]=useState(false);
+  function toggleDictation(){
+    if(!SR){ showToast('Tu navegador no permite dictado. Prueba Safari o Chrome.','error'); return; }
+    if(listening){ try{recRef.current&&recRef.current.stop();}catch(e){} return; }
+    const rec=new SR(); recRef.current=rec;
+    rec.lang='es-ES'; rec.continuous=true; rec.interimResults=false;
+    rec.onresult=(e)=>{ let txt=''; for(let i=e.resultIndex;i<e.results.length;i++){ if(e.results[i].isFinal) txt+=e.results[i][0].transcript; }
+      if(txt.trim()){ setFeynmanText(t=>(t?t.trim()+' ':'')+txt.trim()); setUsedVoice(true); } };
+    rec.onerror=(e)=>{ setListening(false); if(e.error==='not-allowed') showToast('Permite el micrófono para dictar','error'); };
+    rec.onend=()=>setListening(false);
+    try{ rec.start(); setListening(true); }catch(e){ setListening(false); }
+  }
+  useEffect(()=>()=>{ try{recRef.current&&recRef.current.stop();}catch(e){} },[]);
+
+  async function translate(){
+    if(!ai){showToast('Conecta la IA en Config (PIN o API Key)','error');return;}
+    setTranslating(true);
+    try{
+      const words=chapter.content.split(/\s+/),cs=400;
+      let result='';
+      for(let i=0;i<Math.min(words.length,1200);i+=cs){
+        const p=PROMPTS.translate(words.slice(i,i+cs).join(' '));
+        result+=await callClaude({apiKey,...p})+'\n\n';
+      }
+      setTranslation(result.trim());
+      AICache.set(cacheKey,{translation:result.trim()});
+    }catch(err){showToast('Error: '+err.message,'error');}finally{setTranslating(false);}
+  }
+
+  function markRead(){ // llamado tras verificar la lectura
+    if(!earnedRead && !alreadyDone){onEarnTokens(TOKENS.READ_CHAPTER,'Capítulo leído 📖');onStudy('chapter');}
+    setEarnedRead(true);
+    onComplete(chapter.id);
+    if(!alreadyDone) showToast(`+${TOKENS.READ_CHAPTER} StudyTokens! 🎉`);
+  }
+
+  async function generateFlashcards(){
+    if(!ai){showToast('Conecta la IA en Config (PIN o API Key)','error');return;}
+    setFlashLoading(true);
+    try{
+      const p=PROMPTS.flashcards(chapter.content);
+      const raw=await callClaude({apiKey,...p});
+      const parsed=JSON.parse(raw.replace(/```json?|```/g,'').trim());
+      const cards = parsed.cards || parsed.flashcards || (Array.isArray(parsed)?parsed:[]);
+      console.log('Flashcards parsed:', cards.length, cards[0]);
+      setFlashcards(cards);setCurrentCard(0);setCardFlipped(false);setCardResults({});
+      onAddCards(cards,chapter,book);
+    }catch(err){showToast('Error: '+err.message,'error');}finally{setFlashLoading(false);}
+  }
+
+  function nextCard(knew){
+    setCardResults(r=>({...r,[currentCard]:knew}));
+    if(currentCard<flashcards.length-1){setCurrentCard(c=>c+1);setCardFlipped(false);}
+    else{const correct=Object.values({...cardResults,[currentCard]:knew}).filter(Boolean).length;onEarnTokens(correct*TOKENS.FLASHCARD,`Flashcards: ${correct}/${flashcards.length} ✅`);onStudy('flashcards');showToast(`+${correct*TOKENS.FLASHCARD} tokens! 🃏`);}
+  }
+
+  async function evaluateFeynman(){
+    if(!ai){showToast('Conecta la IA en Config (PIN o API Key)','error');return;}
+    if(feynmanText.trim().length<50){showToast('Escribe al menos 50 caracteres','error');return;}
+    setFeynmanLoading(true);
+    try{
+      const p=PROMPTS.feynmanEval(chapter.content,feynmanText);
+      const raw=await callClaude({apiKey,...p});
+      const result=JSON.parse(raw.replace(/```json?|```/g,'').trim());
+      setFeynmanResult(result);
+      onSaveFeynman({chapter:chapter.title,score:result.score,date:Date.now()});
+      const passed=result.score>=60;
+      onStudy('feynman',{passed});
+      if(passed){onEarnTokens(TOKENS.FEYNMAN,'Técnica Feynman ✅');showToast(`+${TOKENS.FEYNMAN} tokens! Feynman 🧠`);
+        if(usedVoice){ setTimeout(()=>onEarnTokens(TOKENS.VOICE_FEYNMAN,'🎙️ Explicación con tu voz'),1200); onStudy('voice'); }}
+    }catch(err){showToast('Error: '+err.message,'error');}finally{setFeynmanLoading(false);}
+  }
+
+  async function generateQuiz(){
+    if(!ai){showToast('Conecta la IA en Config (PIN o API Key)','error');return;}
+    setQuizLoading(true);
+    try{
+      const p=PROMPTS.quiz(chapter.content);
+      const raw=await callClaude({apiKey,...p});
+      setQuiz(JSON.parse(raw.replace(/```json?|```/g,'').trim()));
+      setQuizAnswers({});setQuizDone(false);setReasoningAnswers({});setReasoningResults({});
+    }catch(err){showToast('Error: '+err.message,'error');}finally{setQuizLoading(false);}
+  }
+
+  async function submitReasoning(qIdx,q,ideal,kw){
+    const ans=reasoningAnswers[qIdx];
+    if(!ans||ans.trim().length<20){showToast('Respuesta muy corta','error');return;}
+    setReasoningLoading(l=>({...l,[qIdx]:true}));
+    try{
+      const p=PROMPTS.evalReasoning(q,ideal,kw,ans);
+      const raw=await callClaude({apiKey,...p});
+      setReasoningResults(r=>({...r,[qIdx]:JSON.parse(raw.replace(/```json?|```/g,'').trim())}));
+    }catch(err){showToast('Error: '+err.message,'error');}finally{setReasoningLoading(l=>({...l,[qIdx]:false}));}
+  }
+
+  function finishQuiz(){
+    const qs=quiz.questions||[];
+    const mq=qs.filter(q=>q.type==='multiple');
+    const correct=mq.filter((q,i)=>quizAnswers[i]===q.correct).length;
+    const rp=Object.values(reasoningResults).filter(r=>r.passed).length;
+    const pts=(correct+rp)*TOKENS.QUIZ_PASS;
+    onEarnTokens(pts,`Quiz: ${correct}/${mq.length} correctas`);onStudy('quiz');
+    showToast(`+${pts} tokens! Quiz 🏆`);
+    setQuizDone(true);
+  }
+
+  const scoreColor=s=>s>=80?'#6ee7b7':s>=60?'#67e8f9':'#fca5a5';
+  const evalBorderCls=l=>l==='Excelente'?'eval-excellent':l==='Bien'?'eval-good':'eval-poor';
+
+  return(
+    <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+      <div style={{padding:'12px 16px',background:'var(--surface2)',borderBottom:'1px solid rgba(51,65,85,0.4)',backdropFilter:'blur(12px)'}}>
+        <div className="font-display" style={{fontWeight:800,fontSize:18,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{chapter.title}</div>
+        <div style={{fontSize:19,color:'#334155',marginTop:2}}>{chapter.words?.toLocaleString()} palabras · {book?.title}</div>
+      </div>
+      <div style={{padding:'12px 16px 0',background:'var(--surface)',borderBottom:'1px solid rgba(51,65,85,0.3)'}}>
+        <div className="tab-bar">
+          {[{id:'read',label:'📖 Leer'},{id:'flashcards',label:'🃏 Flashcards'},{id:'feynman',label:'🧠 Feynman'},{id:'quiz',label:'📝 Quiz'}].map(t=>(
+            <button key={t.id} className={`tab-chip ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="scroll-area">
+
+        {tab==='read'&&(
+          <div className="fade-up">
+            <div style={{display:'flex',gap:10,marginBottom:14}}>
+              <button className="btn btn-secondary" style={{flex:1}} onClick={translate} disabled={translating}>
+                {translating?<Spinner text="Traduciendo"/>:'🌐 Traducir al español'}
+              </button>
+            </div>
+            <div className="glass-card" style={{padding:14,marginBottom:12,border:`1px solid ${(rlog.passed||alreadyDone)?'rgba(16,185,129,0.45)':'rgba(6,182,212,0.25)'}`}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <div className="font-display" style={{fontWeight:800,fontSize:16,color:'var(--text)'}}>{(rlog.passed||alreadyDone)?'✅ Lectura verificada':'📏 Verificación de lectura'}</div>
+                <span style={{fontSize:13,color:'var(--muted)'}}>~{estMin} min · {words} palabras</span>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:10}}>
+                {[{ic:'⏱️',lb:'Tiempo',v:fmt(rlog.secs),ok:timeOk,sub:`mín. ${fmt(minSecs)}`},{ic:'👁️',lb:'Leído',v:Math.round(coverage*100)+'%',ok:covOk,sub:`mín. ${Math.round(READ.COVERAGE*100)}%`},{ic:'⚡',lb:'Velocidad',v:wpm?wpm+' ppm':'—',ok:!tooFast,sub:`máx. ${READ.MAX_WPM}`}].map(x=>(
+                  <div key={x.lb} style={{background:'var(--surface2)',borderRadius:10,padding:'8px 6px',textAlign:'center',border:`1px solid ${x.ok?'rgba(16,185,129,0.35)':'var(--border)'}`}}>
+                    <div style={{fontSize:12,color:'var(--muted)'}}>{x.ic} {x.lb}</div>
+                    <div className="font-display" style={{fontWeight:800,fontSize:17,color:x.ok?'#6ee7b7':'var(--text)'}}>{x.v}</div>
+                    <div style={{fontSize:11,color:'var(--muted)'}}>{x.sub}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="progress-track" style={{height:6,marginBottom:10}}><div style={{height:'100%',borderRadius:3,width:`${Math.min(100,Math.round((Math.min(1,rlog.secs/minSecs)*0.5+Math.min(1,coverage/READ.COVERAGE)*0.5)*100))}%`,background:'linear-gradient(90deg,#06b6d4,#10b981)'}}/></div>
+              {tooFast&&<div style={{fontSize:13,color:'#fcd34d',marginBottom:8}}>⚡ Vas más rápido de lo que se puede leer con atención. El tiempo sigue contando: lee con calma.</div>}
+              {(rlog.passed||alreadyDone)?(
+                <div style={{fontSize:14,color:'#6ee7b7'}}>Capítulo leído{(rlog.tests||[]).length?` · test ${rlog.tests[rlog.tests.length-1].score}/${rlog.tests[rlog.tests.length-1].of}`:''} · +{TOKENS.READ_CHAPTER} 🪙 cobrados</div>
+              ):(
+                <button className={`btn btn-full ${canTest?'btn-success':'btn-secondary'}`} disabled={!canTest||testLoading} onClick={startTest}>
+                  {testLoading?<Spinner text="Preparando test"/>:canTest?`🧪 Test de comprensión → +${TOKENS.READ_CHAPTER} 🪙`:
+                    !retryOk?`Repasa un poco más: test disponible en ${fmt((rlog.retryAt||0)-rlog.secs)}`:
+                    !timeOk?`Sigue leyendo: faltan ${fmt(minSecs-rlog.secs)}`:`Llega al final del capítulo (${Math.round(coverage*100)}%)`}
+                </button>
+              )}
+            </div>
+            {attention&&ReactDOM.createPortal(
+              <div className="modal-overlay" style={{alignItems:'center',zIndex:250}}>
+                <div style={{width:'calc(100% - 40px)',maxWidth:380,background:'linear-gradient(180deg,#1c1407,#0f172a)',border:'2px solid #f59e0b',borderRadius:22,padding:24,textAlign:'center'}}>
+                  <div style={{fontSize:42,marginBottom:6}}>⏸️</div>
+                  <div className="font-display" style={{fontWeight:800,fontSize:20,color:'#fcd34d',marginBottom:6}}>¿Sigues leyendo?</div>
+                  <div style={{fontSize:15,color:'#cbd5e1',marginBottom:16,lineHeight:1.5}}>El tiempo está en pausa hasta que confirmes.</div>
+                  <button className="btn btn-gold btn-full btn-lg" onClick={confirmAttention}>Sí, sigo aquí</button>
+                </div>
+              </div>, document.body
+            )}
+            <div style={{position:'sticky',top:-20,zIndex:6,margin:'0 -16px 10px',padding:'8px 16px',background:'var(--bg)',borderBottom:'1px solid rgba(51,65,85,0.4)',display:'flex',alignItems:'center',gap:10,fontSize:14,color:'var(--muted)'}}>
+              <span style={{color:timeOk?'#6ee7b7':'var(--text)',fontWeight:700}}>⏱️ {fmt(rlog.secs)}<span style={{fontWeight:400,color:'var(--muted)'}}>/{fmt(minSecs)}</span></span>
+              <span style={{color:covOk?'#6ee7b7':'var(--text)',fontWeight:700}}>👁️ {Math.round(coverage*100)}%</span>
+              {tooFast&&<span style={{color:'#fcd34d',fontWeight:700}}>⚡ despacio</span>}
+              <div className="progress-track" style={{flex:1,height:5}}><div style={{height:'100%',borderRadius:3,width:`${Math.min(100,Math.round((Math.min(1,rlog.secs/minSecs)*0.5+Math.min(1,coverage/READ.COVERAGE)*0.5)*100))}%`,background:(rlog.passed||alreadyDone)?'#10b981':'linear-gradient(90deg,#06b6d4,#10b981)'}}/></div>
+              {(rlog.passed||alreadyDone)&&<span style={{color:'#6ee7b7'}}>✅</span>}
+            </div>
+            <TTSBar text={displayText} onProgress={ttsProgress}/>
+            <div className="glass-card" style={{padding:20}}>
+              {translation?(
+                <>
+                  <div style={{fontSize:19,color:'#06b6d4',marginBottom:14,fontWeight:700,fontFamily:'Plus Jakarta Sans',textTransform:'uppercase',letterSpacing:'0.8px'}}>Traducción al español</div>
+                  <div className="reading-text" ref={textRef}>{paraT.map((p,i)=><p key={i} data-i={i}>{p}</p>)}</div>
+                </>
+              ):(
+                <>
+                  <div style={{fontSize:19,color:'#334155',marginBottom:14,fontWeight:600,fontFamily:'Plus Jakarta Sans',textTransform:'uppercase',letterSpacing:'0.8px'}}>Texto original</div>
+                  <div className="reading-text" ref={textRef}>
+                    {paraO.map((p,i)=><p key={i} data-i={i}>{p}</p>)}
+                  </div>
+                </>
+              )}
+            </div>
+            {!(rlog.passed||alreadyDone)&&(
+              <div className="glass-card" style={{padding:16,marginTop:14,textAlign:'center'}}>
+                <div className="font-display" style={{fontWeight:800,fontSize:17,color:'var(--text)',marginBottom:10}}>🏁 Fin del capítulo</div>
+                <button className={`btn btn-full ${canTest?'btn-success':'btn-secondary'}`} disabled={!canTest||testLoading} onClick={startTest}>
+                  {testLoading?<Spinner text="Preparando test"/>:canTest?`🧪 Test de comprensión → +${TOKENS.READ_CHAPTER} 🪙`:
+                    !retryOk?`Repasa un poco más: test en ${fmt((rlog.retryAt||0)-rlog.secs)}`:
+                    !timeOk?`Tiempo de lectura: faltan ${fmt(minSecs-rlog.secs)}`:`Leído ${Math.round(coverage*100)}% — revisa lo que saltaste`}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {test&&(
+          <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&test.done&&setTest(null)}>
+            <div className="modal-sheet" style={{maxHeight:'85vh',overflowY:'auto'}}>
+              <div className="modal-handle"/>
+              <div className="font-display" style={{fontWeight:800,fontSize:19,color:'var(--text)',marginBottom:4}}>🧪 Test de comprensión</div>
+              <div style={{fontSize:14,color:'var(--muted)',marginBottom:14}}>Responde sin mirar el texto. Necesitas {Math.min(READ.PASS,test.questions.length)} de {test.questions.length}.</div>
+              {test.questions.map((q,qi)=>(
+                <div key={qi} style={{marginBottom:14}}>
+                  <div style={{fontWeight:700,fontSize:16,color:'var(--text)',marginBottom:8,lineHeight:1.45}}>{qi+1}. {q.q}</div>
+                  {q.options.map((o,oi)=>{
+                    const sel=test.answers[qi]===oi, right=test.done&&oi===q.correct, wrong=test.done&&sel&&oi!==q.correct;
+                    return <button key={oi} disabled={test.done} onClick={()=>setTest(t=>({...t,answers:{...t.answers,[qi]:oi}}))}
+                      style={{display:'block',width:'100%',textAlign:'left',padding:'10px 12px',marginBottom:6,borderRadius:10,cursor:'pointer',fontSize:15,lineHeight:1.4,
+                        border:`1.5px solid ${right?'#10b981':wrong?'#ef4444':sel?'#06b6d4':'var(--border)'}`,background:right?'rgba(16,185,129,0.12)':wrong?'rgba(239,68,68,0.1)':sel?'rgba(6,182,212,0.1)':'var(--surface2)',color:'var(--text)'}}>{o}</button>;
+                  })}
+                  {test.done&&q.why&&<div style={{fontSize:13,color:'var(--muted)',fontStyle:'italic'}}>📖 {q.why}</div>}
+                </div>
+              ))}
+              {!test.done?(
+                <button className="btn btn-primary btn-full" disabled={Object.keys(test.answers).length<test.questions.length} onClick={submitTest}>Comprobar respuestas</button>
+              ):(
+                <>
+                  <div style={{textAlign:'center',fontSize:17,fontWeight:800,margin:'6px 0 12px',color:test.score>=Math.min(READ.PASS,test.questions.length)?'#6ee7b7':'#fca5a5'}}>
+                    {test.score>=Math.min(READ.PASS,test.questions.length)?`✅ ${test.score}/${test.questions.length} · ¡Lectura verificada! +${TOKENS.READ_CHAPTER} 🪙${test.score===test.questions.length?` +${READ.PERFECT_BONUS}`:''}`:`✗ ${test.score}/${test.questions.length} · Repasa el capítulo; podrás reintentar en 2 min de lectura`}
+                  </div>
+                  <button className="btn btn-secondary btn-full" onClick={()=>setTest(null)}>Cerrar</button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {tab==='flashcards'&&(
+          <div className="fade-up">
+            {flashcards.length===0?(
+              <div style={{textAlign:'center',paddingTop:40}}>
+                <div style={{fontSize:56,marginBottom:16}}>🃏</div>
+                <div className="font-display" style={{fontWeight:800,fontSize:22,color:'var(--text)',marginBottom:8}}>Active Recall</div>
+                <div style={{fontSize:19,color:'var(--muted)',marginBottom:28}}>Flashcards inteligentes generadas con IA</div>
+                <button className="btn btn-primary btn-lg" onClick={generateFlashcards} disabled={flashLoading}>
+                  {flashLoading?<Spinner text="Generando"/>:'⚡ Generar Flashcards'}
+                </button>
+              </div>
+            ):(
+              <>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                  <span style={{fontSize:19,color:'var(--muted)',fontFamily:'Plus Jakarta Sans',fontWeight:600}}>Tarjeta {currentCard+1} / {flashcards.length}</span>
+                  <button className="btn btn-secondary btn-sm" onClick={generateFlashcards}><Icons.Refresh/> Nueva tanda</button>
+                </div>
+                <div className="progress-track" style={{marginBottom:18}}>
+                  <div className="progress-fill-cyan" style={{width:`${(currentCard/flashcards.length)*100}%`}}/>
+                </div>
+                {currentCard<flashcards.length?(
+                  <>
+                    <div className={`flashcard ${cardFlipped?'flipped':''}`} onClick={()=>setCardFlipped(f=>!f)}>
+                      <div className="flashcard-inner">
+                        <div className="flashcard-front">
+                          <div style={{fontSize:19,color:'#67e8f9',marginBottom:14,fontWeight:700,fontFamily:'Plus Jakarta Sans',textTransform:'uppercase',letterSpacing:'0.8px'}}>❓ Pregunta</div>
+                          <div className="font-display" style={{fontWeight:700,fontSize:18,color:'#f1f5f9',lineHeight:1.5}}>{flashcards[currentCard]?.q}</div>
+                          <div style={{fontSize:19,color:'#94a3b8',marginTop:18}}>Toca para ver respuesta</div>
+                        </div>
+                        <div className="flashcard-back">
+                          <div style={{fontSize:19,color:'#6ee7b7',marginBottom:14,fontWeight:700,fontFamily:'Plus Jakarta Sans',textTransform:'uppercase',letterSpacing:'0.8px'}}>✅ Respuesta</div>
+                          <div className="answer-text" style={{fontSize:18,lineHeight:1.65,color:'#e2e8f0'}}>{flashcards[currentCard]?.a}</div>
+                        </div>
+                      </div>
+                    </div>
+                    {cardFlipped&&(
+                      <div style={{display:'flex',gap:12,marginTop:16}} className="fade-in">
+                        <button className="btn btn-danger" style={{flex:1}} onClick={()=>nextCard(false)}><Icons.X/> No sabía</button>
+                        <button className="btn btn-success" style={{flex:1}} onClick={()=>nextCard(true)}><Icons.Check/> Lo sabía</button>
+                      </div>
+                    )}
+                  </>
+                ):(
+                  <div className="glass-card" style={{textAlign:'center',padding:36}}>
+                    <div style={{fontSize:44,marginBottom:10}}>🎉</div>
+                    <div className="font-display" style={{fontWeight:800,fontSize:20,color:'var(--text)',marginBottom:8}}>¡Completado!</div>
+                    <div style={{fontSize:19,color:'var(--muted)',marginBottom:20}}>{Object.values(cardResults).filter(Boolean).length}/{flashcards.length} correctas</div>
+                    <button className="btn btn-primary" onClick={()=>{setCurrentCard(0);setCardFlipped(false);setCardResults({});}}><Icons.Refresh/> Repetir</button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {tab==='feynman'&&(
+          <div className="fade-up">
+            <div className="glass-card-cyan" style={{padding:18,marginBottom:16}}>
+              <div className="font-display" style={{fontWeight:800,fontSize:18,color:'var(--text)',marginBottom:6}}>🧠 Técnica Feynman</div>
+              <div style={{fontSize:19,color:'var(--muted)',lineHeight:1.7}}>Explica el capítulo como si enseñaras a alguien sin conocimiento previo.</div>
+            </div>
+            {feynmanResult&&(
+              <div className={`glass-card ${evalBorderCls(feynmanResult.level)}`} style={{padding:20,marginBottom:16,borderWidth:2}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+                  <span className="font-display" style={{fontWeight:800,fontSize:18,color:'var(--text)'}}>{feynmanResult.level}</span>
+                  <span className="font-display" style={{fontWeight:800,fontSize:28,color:scoreColor(feynmanResult.score)}}>{feynmanResult.score}<span style={{fontSize:18,color:'#475569'}}>/100</span></span>
+                </div>
+                {feynmanResult.concepts_mastered?.length>0&&(
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:19,color:'#10b981',marginBottom:6,fontWeight:700,fontFamily:'Plus Jakarta Sans',textTransform:'uppercase'}}>✅ Dominado</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6}}>{feynmanResult.concepts_mastered.map((c,i)=><span key={i} className="badge badge-green">{c}</span>)}</div>
+                  </div>
+                )}
+                {feynmanResult.concepts_missing?.length>0&&(
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:19,color:'#ef4444',marginBottom:6,fontWeight:700,fontFamily:'Plus Jakarta Sans',textTransform:'uppercase'}}>⚠️ Falta profundizar</div>
+                    <div style={{display:'flex',flexWrap:'wrap',gap:6}}>{feynmanResult.concepts_missing.map((c,i)=><span key={i} className="badge badge-red">{c}</span>)}</div>
+                  </div>
+                )}
+                <hr className="neon-sep"/>
+                <div style={{fontSize:19,lineHeight:1.75,color:'#94a3b8',marginBottom:12}}>{feynmanResult.feedback}</div>
+                {feynmanResult.improvement&&(
+                  <div style={{padding:'12px 14px',background:'rgba(6,182,212,0.06)',borderRadius:10,fontSize:18,color:'#67e8f9',lineHeight:1.7,border:'1px solid rgba(6,182,212,0.15)',marginBottom:12}}>
+                    💡 {feynmanResult.improvement}
+                  </div>
+                )}
+                <button className="btn btn-secondary btn-sm" onClick={()=>exportFeynmanPDF(chapter,feynmanText,feynmanResult)}>
+                  <Icons.Download/> Exportar análisis
+                </button>
+              </div>
+            )}
+            <button className={`btn btn-full ${listening?'btn-danger':'btn-secondary'}`} style={{marginBottom:10}} onClick={toggleDictation}>
+              {listening?'⏹ Detener dictado':`🎙️ Explicar con mi voz (+${TOKENS.VOICE_FEYNMAN} extra)`}
+            </button>
+            {listening&&<div style={{fontSize:14,color:'#fca5a5',marginBottom:8}}>● Escuchando… habla como si se lo explicaras a un niño.</div>}
+            <textarea className="input" placeholder="Escribe o dicta tu explicación del capítulo…" value={feynmanText} onChange={e=>setFeynmanText(e.target.value)} style={{minHeight:180,marginBottom:10}}/>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+              <span style={{fontSize:18,color:'var(--muted)'}}>{feynmanText.length} caracteres</span>
+              {feynmanText.length>=50&&<span className="badge badge-green">Listo para evaluar</span>}
+            </div>
+            <button className="btn btn-primary btn-full btn-lg" onClick={evaluateFeynman} disabled={feynmanLoading||feynmanText.length<50}>
+              {feynmanLoading?<Spinner text="Evaluando con Sonnet"/>:`🎯 Evaluar (+${TOKENS.FEYNMAN} tokens)`}
+            </button>
+          </div>
+        )}
+
+        {tab==='quiz'&&(
+          <div className="fade-up">
+            {!quiz?(
+              <div style={{textAlign:'center',paddingTop:40}}>
+                <div style={{fontSize:56,marginBottom:16}}>📝</div>
+                <div className="font-display" style={{fontWeight:800,fontSize:22,color:'var(--text)',marginBottom:8}}>Evaluación Final</div>
+                <div style={{fontSize:19,color:'var(--muted)',marginBottom:28,lineHeight:1.7}}>Quiz con opción múltiple + razonamiento profundo</div>
+                <button className="btn btn-primary btn-lg" onClick={generateQuiz} disabled={quizLoading}>
+                  {quizLoading?<Spinner text="Generando quiz"/>:'🚀 Generar quiz del capítulo'}
+                </button>
+              </div>
+            ):(
+              <>
+                {quiz.questions?.map((q,qIdx)=>(
+                  <div key={qIdx} className="glass-card" style={{padding:18,marginBottom:14}}>
+                    <div style={{fontSize:19,color:'#06b6d4',marginBottom:8,fontWeight:700,fontFamily:'Plus Jakarta Sans',textTransform:'uppercase',letterSpacing:'0.6px'}}>{q.type==='multiple'?'Opción múltiple':'Razonamiento'} · {qIdx+1}</div>
+                    <div className="font-display" style={{fontWeight:700,fontSize:18,color:'var(--text)',lineHeight:1.55,marginBottom:14}}>{q.question}</div>
+                    {q.type==='multiple'&&(
+                      <>
+                        {q.options?.map((opt,oIdx)=>{const answered=quizAnswers[qIdx]!==undefined;const sel=quizAnswers[qIdx]===oIdx,correct=oIdx===q.correct;let cls='quiz-option';if(answered&&correct)cls+=' correct';else if(answered&&sel&&!correct)cls+=' wrong';return<button key={oIdx} className={cls} onClick={()=>!answered&&setQuizAnswers(a=>({...a,[qIdx]:oIdx}))} disabled={answered}>{opt}</button>;})}
+                        {quizAnswers[qIdx]!==undefined&&q.explanation&&(<div style={{marginTop:10,padding:'10px 14px',background:'rgba(16,185,129,0.06)',borderRadius:10,fontSize:18,color:'#6ee7b7',lineHeight:1.7,border:'1px solid rgba(16,185,129,0.15)'}}>💡 {q.explanation}</div>)}
+                      </>
+                    )}
+                    {q.type==='reasoning'&&(
+                      <>
+                        <textarea className="input" placeholder="Escribe tu respuesta…" value={reasoningAnswers[qIdx]||''} onChange={e=>setReasoningAnswers(a=>({...a,[qIdx]:e.target.value}))} style={{minHeight:100,marginBottom:10}} disabled={!!reasoningResults[qIdx]}/>
+                        {!reasoningResults[qIdx]?(
+                          <button className="btn btn-secondary btn-sm" onClick={()=>submitReasoning(qIdx,q.question,q.ideal_answer,q.keywords||[])} disabled={reasoningLoading[qIdx]||(reasoningAnswers[qIdx]||'').length<20}>
+                            {reasoningLoading[qIdx]?<Spinner text="Evaluando"/>:'Evaluar respuesta'}
+                          </button>
+                        ):(
+                          <div style={{padding:'12px 14px',background:reasoningResults[qIdx].passed?'rgba(16,185,129,0.07)':'rgba(239,68,68,0.07)',borderRadius:10,border:`1px solid ${reasoningResults[qIdx].passed?'rgba(16,185,129,0.25)':'rgba(239,68,68,0.25)'}`}}>
+                            <div style={{display:'flex',justifyContent:'space-between',marginBottom:6}}><span className="font-display" style={{fontWeight:700,fontSize:19,color:reasoningResults[qIdx].passed?'#6ee7b7':'#fca5a5'}}>{reasoningResults[qIdx].passed?'✅ Aprobado':'❌ Incompleto'}</span><span style={{color:reasoningResults[qIdx].passed?'#6ee7b7':'#fca5a5',fontWeight:700}}>{reasoningResults[qIdx].score}/100</span></div>
+                            <div style={{fontSize:18,color:'#64748b',lineHeight:1.7}}>{reasoningResults[qIdx].feedback}</div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                ))}
+                {!quizDone&&<button className="btn btn-gold btn-full btn-lg" style={{marginTop:8}} onClick={finishQuiz}>✅ Finalizar y ganar tokens</button>}
+                {quizDone&&(<div className="glass-card" style={{textAlign:'center',padding:32}}><div style={{fontSize:44,marginBottom:10}}>🏆</div><div className="font-display" style={{fontWeight:800,fontSize:20,color:'var(--text)'}}>¡Quiz completado!</div><button className="btn btn-secondary btn-sm" style={{marginTop:14}} onClick={generateQuiz}><Icons.Refresh/> Nuevo quiz</button></div>)}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+      {toast&&<Toast key={toast.key} message={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
+    </div>
+  );
+}
+
+// ═══ VOICE SETTINGS COMPONENT ═══
+function VoiceSettings() {
+  const [allVoices, setAllVoices] = useState([]);
+  const [selectedVoiceName, setSelectedVoiceName] = useState(() => LS.get('sq_tts_voicename',''));
+  const [rawVoices, setRawVoices] = useState([]);
+  const [showAll, setShowAll] = useState(false);
+  const [pitch, setPitchState] = useState(() => Number(LS.get('sq_tts_pitch', 1)) || 1);
+  const setPitch = (p) => { const v = Math.round(Math.min(1.6, Math.max(0.5, p)) * 100) / 100; setPitchState(v); LS.set('sq_tts_pitch', v); };
+  const testPitch = (p) => {
+    try { const v = allVoices.find(x => x.name === selectedVoiceName) || allVoices[0]; const synth = window.speechSynthesis; if (!v || !synth) return;
+      synth.cancel(); const u = new SpeechSynthesisUtterance(v.lang.startsWith('es') ? 'Así suena el tono que elegiste.' : 'This is the pitch you chose.'); u.voice = v; u.lang = v.lang; u.pitch = p; synth.speak(u); } catch (e) {}
+  };
+
+  useEffect(() => {
+    function load() {
+      const v = window.speechSynthesis?.getVoices() || [];
+      if(v.length > 0) {
+        setRawVoices(v.filter(x=>/^(es|en)/i.test(x.lang||'')));
+        setAllVoices(curateVoices(v));
+      }
+    }
+    load();
+    window.speechSynthesis?.addEventListener('voiceschanged', load);
+    // iOS retry
+    let attempts = 0;
+    const retry = setInterval(() => {
+      attempts++; load();
+      if(attempts >= 10 || window.speechSynthesis?.getVoices().length > 0) clearInterval(retry);
+    }, 300);
+    return () => {
+      window.speechSynthesis?.removeEventListener('voiceschanged', load);
+      clearInterval(retry);
+    };
+  }, []);
+
+  function selectVoice(name) {
+    setSelectedVoiceName(name);
+    LS.set('sq_tts_voicename', name);
+    window.dispatchEvent(new Event('tts-voice-changed'));
+    try {
+      const v = [...allVoices, ...rawVoices].find(x => x.name === name); const synth = window.speechSynthesis;
+      if (v && synth) { synth.cancel(); const u = new SpeechSynthesisUtterance(v.lang.startsWith('es') ? 'Hola, así sueno leyendo tus libros.' : 'Hi, this is how I sound reading your books.'); u.voice = v; u.lang = v.lang; u.pitch = pitch; synth.speak(u); }
+    } catch (e) {}
+  }
+
+  const esVoices = allVoices.filter(v => v.lang.startsWith('es'));
+  const enVoices = allVoices.filter(v => v.lang.startsWith('en'));
+  // Only show other voices if they are useful (exclude Indonesian, etc.)
+  const ALLOWED_OTHER = ['fr','pt','de','it','ca'];
+  const otherVoices = allVoices.filter(v => !v.lang.startsWith('es') && !v.lang.startsWith('en') && ALLOWED_OTHER.some(l => v.lang.startsWith(l)));
+
+  const VoiceButton = ({ v, accentColor='#06b6d4' }) => {
+    const active = selectedVoiceName === v.name;
+    const gender = guessGender(v.name);
+    // Detect accent from lang
+    let accent = '';
+    if(v.lang==='es-ES'||v.lang==='es_ES') accent='🇪🇸';
+    else if(v.lang.startsWith('es-MX')||v.lang==='es_MX') accent='🇲🇽';
+    else if(v.lang.startsWith('es-AR')) accent='🇦🇷';
+    else if(v.lang.startsWith('es-CO')) accent='🇨🇴';
+    else if(v.lang.startsWith('es-CL')) accent='🇨🇱';
+    else if(v.lang.startsWith('es-US')) accent='🌎';
+    else if(v.lang.startsWith('es')) accent='🌍';
+    else if(v.lang==='en-GB'||v.lang==='en_GB') accent='🇬🇧';
+    else if(v.lang.startsWith('en-AU')) accent='🇦🇺';
+    else if(v.lang.startsWith('en-US')||v.lang==='en_US') accent='🇺🇸';
+    else if(v.lang.startsWith('en')) accent='🌐';
+
+    return (
+      <button onClick={()=>selectVoice(v.name)}
+        style={{display:'flex',alignItems:'center',gap:10,width:'100%',padding:'11px 14px',borderRadius:12,border:`1.5px solid ${active?accentColor:'var(--border)'}`,background:active?`${accentColor}18`:'var(--surface2)',cursor:'pointer',textAlign:'left',transition:'all 0.15s',marginBottom:6}}>
+        <span style={{fontSize:20}}>{accent}</span>
+        <span style={{fontSize:18}}>{gender==='female'?'👩':'👨'}</span>
+        <div style={{flex:1}}>
+          <div className="font-display" style={{fontWeight:700,fontSize:19,color:active?accentColor:'var(--text)'}}>{voiceLabel(v)}</div>
+          <div style={{fontSize:10,color:'var(--muted)',marginTop:1}}>{v.lang} · {gender==='female'?'Femenina':'Masculino'}{v.localService?' · Local':' · Online'}</div>
+        </div>
+        {active && <span style={{color:accentColor,fontSize:21,fontWeight:800}}>✓</span>}
+      </button>
+    );
+  };
+
+  if(allVoices.length === 0) return (
+    <div className="glass-card" style={{padding:20,marginBottom:16,textAlign:'center'}}>
+      <div style={{fontSize:13,color:'var(--muted)',marginBottom:6}}>Voces del sistema: {(window.speechSynthesis?.getVoices()||[]).length}</div>
+      <div style={{fontSize:19,color:'var(--muted)'}}>🔊 Cargando voces del sistema...</div>
+      <div style={{fontSize:19,color:'var(--muted)',marginTop:8,lineHeight:1.6}}>
+        Si no aparecen voces en español, instálalas en:<br/>
+        <strong>Android:</strong> Ajustes → Accesibilidad → Texto a voz → Instalar datos de voz<br/>
+        <strong>iOS:</strong> Ajustes → Accesibilidad → Contenido hablado → Voces
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="glass-card" style={{padding:20,marginBottom:16}}>
+      <div className="font-display" style={{fontWeight:800,fontSize:19,color:'var(--text)',marginBottom:4}}>🔊 Voz de Lectura</div>
+      <div style={{fontSize:18,color:'var(--muted)',marginBottom:14}}>
+        Las 2 mejores voces de mujer y de hombre de tu dispositivo · toca una para probarla
+      </div>
+
+      <div style={{background:'var(--surface2)',borderRadius:14,padding:'14px 14px 10px',marginBottom:16,border:'1px solid var(--border)'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+          <span className="font-display" style={{fontWeight:700,fontSize:17,color:'var(--text)'}}>🎚️ Tono de voz</span>
+          <span style={{fontSize:15,color:'#67e8f9',fontWeight:700}}>{pitch<0.85?'Grave':pitch>1.15?'Aguda':'Normal'} · {pitch.toFixed(2)}</span>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:12}}>
+          {[{l:'🔉 Grave',v:0.7},{l:'🔊 Normal',v:1},{l:'🔔 Aguda',v:1.3}].map(o=>(
+            <button key={o.v} className={`btn btn-sm ${Math.abs(pitch-o.v)<0.01?'btn-primary':'btn-secondary'}`} onClick={()=>{setPitch(o.v);testPitch(o.v);}}>{o.l}</button>
+          ))}
+        </div>
+        <input type="range" min="0.5" max="1.6" step="0.05" value={pitch} onChange={e=>setPitch(parseFloat(e.target.value))} onPointerUp={e=>testPitch(parseFloat(e.target.value))} onTouchEnd={e=>testPitch(parseFloat(e.target.value))} style={{width:'100%',accentColor:'#06b6d4'}}/>
+        <div style={{fontSize:13,color:'var(--muted)',marginTop:4}}>Con Mónica o Paulina en "Grave" consigues una voz más profunda.</div>
+      </div>
+
+      {esVoices.length > 0 && (
+        <>
+          <div style={{fontSize:19,color:'#06b6d4',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',marginBottom:8}}>
+            🌍 Español — {esVoices.length} voz(ces)
+          </div>
+          {esVoices.map(v => <VoiceButton key={v.name} v={v} accentColor="#06b6d4"/>)}
+        </>
+      )}
+
+      {esVoices.length >= 2 && !esVoices.some(v=>VOICE_GENDER[v.name]==='male'&&!VOICE_ELOQ[deaccent(v.name).split(/[\s(]/)[0]]) && (
+        <div style={{padding:'12px 14px',background:'rgba(6,182,212,0.08)',border:'1px solid rgba(6,182,212,0.25)',borderRadius:10,marginBottom:12,fontSize:16,color:'#67e8f9',lineHeight:1.7}}>
+          👨 Para tener voces de hombre naturales en español, descárgalas gratis:<br/>
+          <strong>iPhone →</strong> Ajustes → Accesibilidad → Contenido leído → Voces → Español → <em>Jorge</em> y <em>Juan</em> (elige "Mejorada" si aparece). Luego cierra y abre la app.
+        </div>
+      )}
+      {esVoices.length < 2 && (
+        <div style={{padding:'12px 14px',background:'rgba(245,158,11,0.08)',border:'1px solid rgba(245,158,11,0.25)',borderRadius:10,marginBottom:12,fontSize:18,color:'#fcd34d',lineHeight:1.8}}>
+          {esVoices.length === 0 ? '⚠️ No hay voces en español.' : '💡 Solo hay 1 voz en español. Instala más:'}<br/>
+          <strong>iPhone →</strong> Ajustes → Accesibilidad → Contenido hablado → Voces<br/>
+          🇪🇸 <strong>Español (España):</strong> descarga <em>Lucía</em> (mujer) y <em>Jorge</em> (hombre)<br/>
+          🇲🇽 <strong>Español (México):</strong> descarga <em>Paulina</em> (mujer) y <em>Juan</em> (hombre)
+        </div>
+      )}
+
+      {enVoices.length > 0 && (
+        <>
+          <hr className="neon-sep"/>
+          <div style={{fontSize:19,color:'#f59e0b',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.6px',marginBottom:8}}>
+            🌐 English — {enVoices.length} voice(s)
+          </div>
+          {enVoices.map(v => <VoiceButton key={v.name} v={v} accentColor="#f59e0b"/>)}
+        </>
+      )}
+
+
+      <hr className="neon-sep"/>
+      <button className="btn btn-secondary btn-sm" onClick={()=>setShowAll(x=>!x)}>{showAll?'Ocultar':'Ver todas las voces'} ({rawVoices.length})</button>
+      {showAll && rawVoices.map(v => <VoiceButton key={'raw_'+v.name} v={v} accentColor="#94a3b8"/>)}
+    </div>
+  );
+}
+
+// ═══ SETTINGS SCREEN ═══
+function SettingsScreen({apiKey,onSave,theme,onToggleTheme,server={},pin,onPin,onForgetPin,pinBusy,pinErr,syncState={}}){
+  const [pinIn,setPinIn]=useState('');
+  const [key,setKey]=useState(apiKey||'');
+  const [show,setShow]=useState(false);
+  return(
+    <div className="scroll-area fade-up">
+      <div style={{marginBottom:24}}>
+        <div className="font-display" style={{fontSize:27,fontWeight:800,color:'var(--text)',marginBottom:4}}>⚙️ Configuración</div>
+        <div style={{fontSize:19,color:'var(--muted)'}}>API Key, tema y preferencias</div>
+      </div>
+
+      {/* Theme toggle */}
+      <div className="glass-card" style={{padding:18,marginBottom:16,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div>
+          <div className="font-display" style={{fontWeight:700,fontSize:19,color:'var(--text)',marginBottom:2}}>Modo {theme==='dark'?'Oscuro':'Claro'}</div>
+          <div style={{fontSize:18,color:'var(--muted)'}}>Cambia la apariencia de la app</div>
+        </div>
+        <button className={`btn ${theme==='dark'?'btn-secondary':'btn-primary'} btn-sm`} onClick={onToggleTheme}>
+          {theme==='dark'?<><Icons.Sun/> Claro</>:<><Icons.Moon/> Oscuro</>}
+        </button>
+      </div>
+
+      <div className="glass-card" style={{padding:20,marginBottom:16}}>
+        <div style={{fontSize:17,color:'#06b6d4',marginBottom:10,fontWeight:700,fontFamily:'Plus Jakarta Sans',letterSpacing:'0.8px',textTransform:'uppercase'}}>🔗 Teléfono y PC</div>
+        {!server.serverKey ? (
+          <div style={{fontSize:15,color:'var(--muted)',lineHeight:1.6}}>La clave aún no está guardada en Netlify. Cuando la configures (ANTHROPIC_API_KEY y APP_PIN), podrás usar la app en cualquier navegador solo con tu PIN y tu progreso se sincronizará.</div>
+        ) : pin ? (
+          <>
+            <div style={{fontSize:16,color:'#6ee7b7',marginBottom:6}}>✅ Este dispositivo está conectado</div>
+            <div style={{fontSize:14,color:syncState.ok===false?'#fca5a5':'var(--muted)',marginBottom:12}}>{syncState.ok===false?('⚠️ '+syncState.msg):(syncState.at?('Sincronizado '+new Date(syncState.at).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})):'Sincronización activa')}</div>
+            <button className="btn btn-secondary btn-sm" onClick={onForgetPin}>Desconectar este dispositivo</button>
+          </>
+        ) : (
+          <>
+            <div style={{fontSize:15,color:'var(--muted)',marginBottom:10}}>Escribe tu PIN para usar la IA sin API Key y sincronizar tu progreso.</div>
+            <div style={{display:'flex',gap:8}}>
+              <input className="input" type="password" inputMode="numeric" placeholder="PIN" value={pinIn} onChange={e=>setPinIn(e.target.value)} style={{flex:1}}/>
+              <button className="btn btn-primary" disabled={pinBusy} onClick={()=>onPin(pinIn)}>{pinBusy?'…':'Conectar'}</button>
+            </div>
+            {pinErr&&<div style={{color:'#fca5a5',fontSize:14,marginTop:8}}>{pinErr}</div>}
+          </>
+        )}
+      </div>
+
+      <div className="glass-card" style={{padding:20,marginBottom:16}}>
+        <div style={{fontSize:17,color:'#06b6d4',marginBottom:10,fontWeight:700,fontFamily:'Plus Jakarta Sans',letterSpacing:'0.8px',textTransform:'uppercase'}}>Anthropic API Key {server.serverKey?'(opcional)':''}</div>
+        <input className="input" type={show?'text':'password'} value={key} onChange={e=>setKey(e.target.value)} placeholder="sk-ant-..." spellCheck={false} autoComplete="off"/>
+        <div style={{display:'flex',gap:8,marginTop:12}}>
+          <button className="btn btn-secondary btn-sm" onClick={()=>setShow(!show)}><Icons.Eye/> {show?'Ocultar':'Mostrar'}</button>
+          <button className="btn btn-primary" style={{flex:1}} onClick={()=>onSave(key)}>Guardar</button>
+        </div>
+        <div style={{fontSize:19,color:'#334155',marginTop:10,lineHeight:1.6}}>Guardada solo en este dispositivo. Si la clave ya está en Netlify, puedes dejar esto vacío.</div>
+      </div>
+
+      <div className="glass-card" style={{padding:20,marginBottom:16}}>
+        <div className="font-display" style={{fontWeight:800,fontSize:19,color:'var(--text)',marginBottom:14}}>Modelos de IA</div>
+        {[{name:'Haiku',model:MODELS.haiku,use:'Traducción · Flashcards',color:'#06b6d4'},{name:'Sonnet',model:MODELS.sonnet,use:'Feynman · Quiz',color:'#f59e0b'}].map(m=>(
+          <div key={m.name} style={{background:'var(--surface2)',borderRadius:12,padding:'12px 14px',border:`1px solid ${m.color}55`,marginBottom:8}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+              <span className="font-display" style={{fontWeight:800,color:m.color,fontSize:19,textShadow:'0 0 20px currentColor'}}>{m.name}</span>
+              <span style={{fontSize:19,fontWeight:600,color:m.color,background:`${m.color}15`,padding:'3px 10px',borderRadius:20,border:`1px solid ${m.color}30`,fontFamily:'Plus Jakarta Sans'}}>{m.use}</span>
+            </div>
+            <div style={{fontSize:19,color:'var(--muted)',fontFamily:'monospace',marginTop:2}}>{m.model}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ─── VOICE SELECTOR ─── */}
+      <VoiceSettings/>
+
+      <div className="glass-card" style={{padding:20}}>
+        <div className="font-display" style={{fontWeight:800,fontSize:19,color:'var(--text)',marginBottom:8}}>StudyQuest v{APP_VERSION}</div>
+        <div style={{fontSize:19,color:'var(--muted)',lineHeight:1.75}}>Active Recall · Feynman por voz · Repaso espaciado · Conquista del Mundo · Racha diaria · Retos semanales · Sincronización</div>
+      </div>
+    </div>
+  );
+}
+
+// ═══ HOME SCREEN ═══
+function HomeScreen({ tokens, books, activeBookId, progress, onNav, conquests, city, streak, week, deck, readmin, onClaim, onClaimChest }) {
+  const activeBook = books.find(b => b.id === activeBookId) || books[0];
+  const done = activeBook ? activeBook.chapters?.filter(ch => progress?.[`${activeBook.id}_${ch.id}`]).length || 0 : 0;
+  const total = activeBook?.chapters?.length || 0;
+  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+  const openCountries = WORLD_COUNTRIES.filter(c => continentUnlocked(CONTINENTS.find(x => x.id === c.continent), conquests));
+  const nextCountry = openCountries.filter(c => !conquests.includes(c.id)).sort((a, b) => countryPct(city, b) - countryPct(city, a))[0];
+  const nextPct = nextCountry ? countryPct(city, nextCountry) : 100;
+  const due = (deck || []).filter(c => c.due <= Date.now()).length;
+  const today = todayStr();
+  const streakAlive = streak.last === today || streak.last === todayStr(new Date(Date.now() - 864e5));
+  const streakCount = streakAlive ? streak.count : 0;
+  const doneToday = streak.last === today;
+  const nextStreakBonus = Math.min(TOKENS.STREAK_STEP * (doneToday ? streakCount + 1 : streakCount + 1), TOKENS.STREAK_MAX);
+  const minutesToday = readmin.date === today ? readmin.minutes : 0;
+  const wk = week.week === weekStr() ? week : { counts: {}, claimed: [], chest: false };
+  const allClaimed = WEEKLY.every(w => (wk.claimed || []).includes(w.id));
+
+  return (
+    <div className="scroll-area fade-up">
+      <div style={{ position: 'relative', marginBottom: 20 }}>
+        <div style={{ fontSize: 16, color: '#06b6d4', fontWeight: 700, fontFamily: 'Plus Jakarta Sans', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: 6 }}>✦ Sistema de Aprendizaje</div>
+        <div className="font-display" style={{ fontSize: 32, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.5px', lineHeight: 1.1 }}>Study<span className="grad-cyan">Quest</span></div>
+      </div>
+
+      {/* Tokens + racha */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 12, marginBottom: 14 }}>
+        <div style={{ background: 'linear-gradient(135deg,rgba(6,182,212,0.1),rgba(139,92,246,0.06))', border: '1px solid rgba(6,182,212,0.2)', borderRadius: 20, padding: 16 }}>
+          <div style={{ fontSize: 13, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 4 }}>StudyTokens</div>
+          <div className="font-display grad-gold" style={{ fontSize: 38, fontWeight: 800, lineHeight: 1 }}>{tokens}</div>
+          <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>⏱️ Hoy: {minutesToday}/{TOKENS.READ_MINUTE_CAP} min con tokens</div>
+        </div>
+        <div style={{ background: streakCount ? 'linear-gradient(135deg,rgba(249,115,22,0.18),rgba(239,68,68,0.08))' : 'var(--surface2)', border: `1px solid ${streakCount ? 'rgba(249,115,22,0.4)' : 'var(--border)'}`, borderRadius: 20, padding: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 30, lineHeight: 1, filter: doneToday ? 'none' : 'grayscale(0.7)' }}>🔥</div>
+          <div className="font-display" style={{ fontSize: 26, fontWeight: 800, color: streakCount ? '#fdba74' : 'var(--muted)' }}>{streakCount}</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.3 }}>{doneToday ? 'días de racha · ¡hoy listo!' : `Estudia hoy: +${nextStreakBonus} 🪙`}</div>
+        </div>
+      </div>
+
+      {/* Repaso espaciado */}
+      {due > 0 && (
+        <button onClick={() => onNav('review')} style={{ width: '100%', textAlign: 'left', cursor: 'pointer', background: 'linear-gradient(135deg,rgba(139,92,246,0.16),rgba(139,92,246,0.05))', border: '1px solid rgba(139,92,246,0.4)', borderRadius: 20, padding: 16, marginBottom: 14, display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span style={{ fontSize: 32 }}>🧠</span>
+          <div style={{ flex: 1 }}>
+            <div className="font-display" style={{ fontWeight: 800, fontSize: 18, color: '#c4b5fd' }}>{due} tarjeta{due > 1 ? 's' : ''} para repasar</div>
+            <div style={{ fontSize: 14, color: 'var(--muted)' }}>A tiempo pagan doble: +{TOKENS.REVIEW_ONTIME} 🪙 cada una</div>
+          </div>
+          <span style={{ fontSize: 20, color: '#c4b5fd' }}>→</span>
+        </button>
+      )}
+
+      {/* Libro activo */}
+      {activeBook ? (
+        <div className="glass-card" style={{ padding: 16, marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div className="font-display" style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{activeBook.title}</div>
+            <span className="badge badge-cyan">{pct}%</span>
+          </div>
+          <div className="progress-track" style={{ marginBottom: 8 }}><div className="progress-fill-cyan" style={{ width: `${pct}%` }}/></div>
+          <div style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 12 }}>{done}/{total} capítulos · al terminarlo: +{TOKENS.BOOK_DONE} 🪙</div>
+          <button className="btn btn-primary btn-full" onClick={() => onNav('library')}>Continuar lectura →</button>
+        </div>
+      ) : (
+        <div className="glass-card" style={{ padding: 24, textAlign: 'center', marginBottom: 14 }}>
+          <div style={{ fontSize: 40, marginBottom: 10 }}>📚</div>
+          <div className="font-display" style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)', marginBottom: 10 }}>Sin libro cargado</div>
+          <button className="btn btn-primary" onClick={() => onNav('library')}><Icons.Upload/> Cargar libro</button>
+        </div>
+      )}
+
+      {/* Retos semanales */}
+      <div className="glass-card" style={{ padding: 16, marginBottom: 14 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div className="font-display" style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>🎯 Retos de la semana</div>
+          <span style={{ fontSize: 13, color: 'var(--muted)' }}>{(wk.claimed || []).length}/{WEEKLY.length}</span>
+        </div>
+        {WEEKLY.map(w => {
+          const v = Math.min(w.goal, (wk.counts || {})[w.id] || 0), ok = v >= w.goal, claimed = (wk.claimed || []).includes(w.id);
+          return (
+            <div key={w.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0' }}>
+              <span style={{ fontSize: 20 }}>{w.icon}</span>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: claimed ? 'var(--muted)' : 'var(--text)', marginBottom: 4 }}>
+                  <span style={{ textDecoration: claimed ? 'line-through' : 'none' }}>{w.label}</span><span style={{ color: 'var(--muted)' }}>{v}/{w.goal}</span>
+                </div>
+                <div className="progress-track" style={{ height: 5 }}><div style={{ height: '100%', width: `${v / w.goal * 100}%`, background: ok ? '#10b981' : '#06b6d4', borderRadius: 3 }}/></div>
+              </div>
+              {claimed ? <span style={{ fontSize: 16 }}>✅</span> :
+                <button className={`btn btn-sm ${ok ? 'btn-gold' : 'btn-secondary'}`} disabled={!ok} onClick={() => onClaim(w.id)} style={{ minWidth: 64 }}>+{w.reward}</button>}
+            </div>
+          );
+        })}
+        <button className={`btn btn-full ${allClaimed && !wk.chest ? 'btn-gold' : 'btn-secondary'}`} style={{ marginTop: 10 }} disabled={!allClaimed || wk.chest} onClick={onClaimChest}>
+          {wk.chest ? '🎁 Cofre abierto esta semana' : `🎁 Cofre semanal +${WEEKLY_CHEST} 🪙${allClaimed ? '' : ' · completa los 4 retos'}`}
+        </button>
+      </div>
+
+      {/* Próxima conquista */}
+      {nextCountry && (
+        <div style={{ background: `linear-gradient(135deg,${nextCountry.color}15,${nextCountry.color}05)`, border: `1px solid ${nextCountry.color}33`, borderRadius: 20, padding: 16, marginBottom: 14 }}>
+          <div style={{ fontSize: 13, color: nextCountry.color, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 8 }}>🌍 Próxima conquista</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 32 }}>{nextCountry.flag}</span>
+            <div style={{ flex: 1 }}>
+              <div className="font-display" style={{ fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>{nextCountry.name} · {nextPct}%</div>
+              <div className="progress-track" style={{ height: 6, marginTop: 6 }}><div style={{ height: '100%', width: `${nextPct}%`, background: nextCountry.color, borderRadius: 3 }}/></div>
+            </div>
+            <button className="btn btn-sm" style={{ background: `${nextCountry.color}22`, color: nextCountry.color, border: `1px solid ${nextCountry.color}44` }} onClick={() => onNav('city')}>Construir</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        {[{ icon: '🌍', label: 'Mundo', nav: 'city' }, { icon: '🧠', label: `Repaso (${(deck || []).length})`, nav: 'review' }].map(a => (
+          <button key={a.nav} className="glass-card" style={{ cursor: 'pointer', textAlign: 'center', padding: '18px 12px' }} onClick={() => onNav(a.nav)}>
+            <div style={{ fontSize: 30, marginBottom: 6 }}>{a.icon}</div>
+            <div className="font-display" style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>{a.label}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ═══ REPASO ESPACIADO ═══
+function ReviewScreen({ deck, onAnswer, onNav }) {
+  const now = Date.now();
+  const due = (deck || []).filter(c => c.due <= now).sort((a, b) => a.due - b.due);
+  const [flipped, setFlipped] = useState(false);
+  const card = due[0];
+  const upcoming = (deck || []).filter(c => c.due > now).sort((a, b) => a.due - b.due);
+  const days = (ms) => Math.max(1, Math.round((ms - now) / 864e5));
+  useEffect(() => { setFlipped(false); }, [card && card.id]);
+
+  return (
+    <div className="scroll-area fade-up">
+      <div style={{ marginBottom: 16 }}>
+        <div className="font-display" style={{ fontSize: 27, fontWeight: 800, color: 'var(--text)', marginBottom: 4 }}>🧠 Repaso</div>
+        <div style={{ fontSize: 16, color: 'var(--muted)' }}>Las tarjetas vuelven a los 1, 3, 7, 14 y 30 días. A tiempo pagan doble.</div>
+      </div>
+      {card ? (
+        <>
+          <div style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 8 }}>{due.length} pendiente{due.length > 1 ? 's' : ''} · {card.chapter}</div>
+          <div className="glass-card" onClick={() => setFlipped(f => !f)} style={{ padding: 24, minHeight: 220, cursor: 'pointer', display: 'flex', flexDirection: 'column', justifyContent: 'center', border: '1px solid rgba(139,92,246,0.35)' }}>
+            <div style={{ fontSize: 12, color: '#a78bfa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>{flipped ? 'Respuesta' : 'Pregunta'} · caja {card.box + 1}/5</div>
+            <div className="font-display" style={{ fontSize: 19, fontWeight: 700, color: 'var(--text)', lineHeight: 1.5 }}>{flipped ? card.a : card.q}</div>
+            {!flipped && <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 16 }}>Toca para ver la respuesta</div>}
+          </div>
+          {flipped && (
+            <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+              <button className="btn btn-danger" style={{ flex: 1 }} onClick={() => onAnswer(card.id, false)}>✗ No lo sabía</button>
+              <button className="btn btn-success" style={{ flex: 1 }} onClick={() => onAnswer(card.id, true)}>✓ Lo sabía</button>
+            </div>
+          )}
+        </>
+      ) : (
+        <div className="glass-card" style={{ padding: 28, textAlign: 'center' }}>
+          <div style={{ fontSize: 44, marginBottom: 8 }}>✨</div>
+          <div className="font-display" style={{ fontWeight: 800, fontSize: 19, color: 'var(--text)', marginBottom: 6 }}>{(deck || []).length ? '¡Todo repasado por hoy!' : 'Aún no tienes tarjetas'}</div>
+          <div style={{ fontSize: 15, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 14 }}>
+            {(deck || []).length ? `La próxima vuelve en ${days(upcoming[0].due)} día(s).` : 'Genera flashcards en cualquier capítulo y se guardan aquí para repasarlas.'}
+          </div>
+          <button className="btn btn-primary" onClick={() => onNav('library')}>Ir a mis libros</button>
+        </div>
+      )}
+      {upcoming.length > 0 && (
+        <div className="glass-card" style={{ padding: 16, marginTop: 14 }}>
+          <div className="font-display" style={{ fontWeight: 800, fontSize: 16, color: 'var(--text)', marginBottom: 8 }}>Próximos repasos</div>
+          {[1, 3, 7, 14, 30].map(d => {
+            const n = upcoming.filter(c => days(c.due) <= d && (d === 1 || days(c.due) > [0, 1, 3, 7, 14][[1, 3, 7, 14, 30].indexOf(d)])).length;
+            return n ? <div key={d} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--muted)', padding: '4px 0' }}><span>{d === 1 ? 'Mañana' : `En ≤ ${d} días`}</span><span>{n}</span></div> : null;
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══ SINCRONIZACIÓN teléfono ↔ PC (Netlify Blobs, protegido con PIN) ═══
+const SYNC_KEYS = ['sq_tts_pitch','sq_readlog','sq_tokens','sq_city3','sq_conquests','sq_progress2','sq_feynman_notes','sq_milestones','sq_streak','sq_readmin','sq_deck','sq_week','sq_booksdone','sq_activebook','sq_theme','sq_tts_voicename','sq_stats'];
+const Sync = {
+  enabled(){ return !!LS.get('sq_pin','') && !!(window.__server && window.__server.serverKey); },
+  snapshot(){ const o={}; SYNC_KEYS.forEach(k=>{ const v=LS.get(k,undefined); if(v!==undefined) o[k]=v; }); return o; },
+  hash(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return String(h); },
+  async req(method,key,body){
+    const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),8000);
+    try{
+      const r=await fetch('/api/sync?key='+key,{method,signal:ctl.signal,headers:{'X-App-Pin':LS.get('sq_pin',''),'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+      if(r.status===401) throw new Error('PIN incorrecto');
+      if(!r.ok){ const e=await r.json().catch(()=>({})); throw new Error(e.error||('HTTP '+r.status)); }
+      return r.json();
+    } finally { clearTimeout(tm); }
+  },
+  score(d){ const lv=Object.values(d.sq_city3||{}).reduce((a,c)=>a+Object.values(c||{}).reduce((x,y)=>x+(y||0),0),0);
+    return (d.sq_tokens||0)+lv*20+(d.sq_conquests||[]).length*200+Object.keys(d.sq_progress2||{}).length*10; },
+  // Devuelve true si cambió algo local
+  async pull(){
+    let changed=false;
+    const remote=await Sync.req('GET','state');
+    if(remote && remote.data){
+      const local=Sync.snapshot(), lastHash=LS.get('sq_sync_hash',null);
+      let useRemote;
+      if(lastHash===null){ // primer contacto de este dispositivo: gana el que tenga más progreso
+        useRemote=Sync.score(remote.data)>=Sync.score(local);
+        if(useRemote && Sync.score(local)>0) LS.set('sq_backup_'+Date.now(), local);
+      } else useRemote=(remote.updatedAt||0)>(LS.get('sq_updatedAt',0)||0);
+      if(useRemote){
+        Object.entries(remote.data).forEach(([k,v])=>LS.set(k,v));
+        LS.set('sq_updatedAt',remote.updatedAt||Date.now());
+        LS.set('sq_sync_hash',Sync.hash(JSON.stringify(Sync.snapshot())));
+        changed=true;
+      }
+    }
+    try{
+      const rb=await Sync.req('GET','books');
+      if(rb && Array.isArray(rb.data)){
+        const local=LS.get('sq_books',[])||[], ids=new Set(local.map(b=>b.id));
+        const add=rb.data.filter(b=>!ids.has(b.id) && !(LS.get('sq_books_deleted',[])||[]).includes(b.id));
+        if(add.length){ LS.set('sq_books',[...local,...add]); changed=true; }
+      }
+    }catch(e){}
+    return changed;
+  },
+  async pushState(){
+    const snap=Sync.snapshot(), h=Sync.hash(JSON.stringify(snap));
+    if(h===LS.get('sq_sync_hash',null)) return;
+    const updatedAt=Date.now(); LS.set('sq_updatedAt',updatedAt);
+    await Sync.req('PUT','state',{updatedAt,data:snap});
+    LS.set('sq_sync_hash',h);
+  },
+  async pushBooks(books){
+    const s=JSON.stringify(books), h=Sync.hash(s);
+    if(h===LS.get('sq_books_hash',null)) return;
+    if(s.length>4.4e6) throw new Error('Libros demasiado grandes para sincronizar');
+    await Sync.req('PUT','books',{updatedAt:Date.now(),data:books});
+    LS.set('sq_books_hash',h);
+  },
+};
+
+// ═══ RETOS, FECHAS ═══
+const pad2=n=>String(n).padStart(2,'0');
+function todayStr(d=new Date()){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function weekStr(d=new Date()){ const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day); const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1)); return t.getUTCFullYear()+'-W'+Math.ceil(((t-y0)/864e5+1)/7); }
+const WEEKLY=[
+  {id:'chapters',label:'Lee 3 capítulos',goal:3,reward:40,icon:'📖'},
+  {id:'feynman',label:'Aprueba 1 explicación Feynman',goal:1,reward:40,icon:'🧠'},
+  {id:'reviews',label:'Repasa 10 tarjetas',goal:10,reward:40,icon:'🃏'},
+  {id:'minutes',label:'Lee 60 minutos',goal:60,reward:40,icon:'⏱️'},
+];
+const WEEKLY_CHEST=100;
+const REVIEW_DAYS=[1,3,7,14,30];
+
+function loadCity(){
+  const c3=LS.get('sq_city3',null); if(c3) return c3;
+  const c2=LS.get('sq_city2',{})||{}, out={};
+  Object.entries(c2).forEach(([cid,arr])=>{ out[cid]={}; (arr||[]).forEach(b=>{ out[cid][b]=2; }); }); // antiguos edificios = terminados
+  return out;
+}
+function loadMilestones(){
+  const m=LS.get('sq_milestones',null); if(m) return m;
+  const out={}; (LS.get('sq_conquests',[])||[]).forEach(cid=>{ out[cid]=[50,75,100]; }); // ya cobrados
+  return out;
+}
+
+// ═══ APP ROOT ═══
+function App(){
+  const server=window.__server||{serverKey:false,pin:false};
+  const [apiKey,setApiKey]=useState(()=>LS.get('sq_apikey',''));
+  const [pin,setPin]=useState(()=>LS.get('sq_pin',''));
+  const [tokens,setTokens]=useState(()=>LS.get('sq_tokens',0));
+  const [city,setCity]=useState(loadCity);
+  const [milestones,setMilestones]=useState(loadMilestones);
+  const [books,setBooks]=useState(()=>LS.get('sq_books',[]));
+  const [activeBookId,setActiveBookId]=useState(()=>LS.get('sq_activebook',null));
+  const [progress,setProgress]=useState(()=>LS.get('sq_progress2',{}));
+  const [conquests,setConquests]=useState(()=>LS.get('sq_conquests',[]));
+  const [feynmanNotes,setFeynmanNotes]=useState(()=>LS.get('sq_feynman_notes',[]));
+  const [streak,setStreak]=useState(()=>LS.get('sq_streak',{last:'',count:0,best:0}));
+  const [readmin,setReadmin]=useState(()=>LS.get('sq_readmin',{date:'',minutes:0}));
+  const [deck,setDeck]=useState(()=>LS.get('sq_deck',[]));
+  const [week,setWeek]=useState(()=>LS.get('sq_week',{week:'',counts:{},claimed:[],chest:false}));
+  const [booksDone,setBooksDone]=useState(()=>LS.get('sq_booksdone',[]));
+  const [stats,setStats]=useState(()=>LS.get('sq_stats',{minutes:0,reviews:0,voice:0}));
+  const [theme,setTheme]=useState(()=>LS.get('sq_theme','dark'));
+  const [activeNav,setActiveNav]=useState('home');
+  const [selectedChapter,setSelectedChapter]=useState(null);
+  const [selectedBook,setSelectedBook]=useState(null);
+  const [toast,setToast]=useState(null);
+  const [celebrate,setCelebrate]=useState(null);
+  const [onboardKey,setOnboardKey]=useState('');
+  const [pinInput,setPinInput]=useState('');
+  const [pinErr,setPinErr]=useState('');
+  const [pinBusy,setPinBusy]=useState(false);
+  const [pinSkip,setPinSkip]=useState(()=>!!sessionStorage.getItem('sq_pin_skip'));
+  const [syncState,setSyncState]=useState(()=>window.__syncError?{ok:false,msg:window.__syncError}:{ok:true,msg:''});
+
+  useEffect(()=>{ LS.set('sq_apikey',apiKey); },[apiKey]);
+  useEffect(()=>{ LS.set('sq_tokens',tokens); },[tokens]);
+  useEffect(()=>{ LS.set('sq_city3',city); },[city]);
+  useEffect(()=>{ LS.set('sq_milestones',milestones); },[milestones]);
+  useEffect(()=>{ LS.set('sq_books',books); },[books]);
+  useEffect(()=>{ LS.set('sq_activebook',activeBookId); },[activeBookId]);
+  useEffect(()=>{ LS.set('sq_progress2',progress); },[progress]);
+  useEffect(()=>{ LS.set('sq_conquests',conquests); },[conquests]);
+  useEffect(()=>{ LS.set('sq_feynman_notes',feynmanNotes); },[feynmanNotes]);
+  useEffect(()=>{ LS.set('sq_streak',streak); },[streak]);
+  useEffect(()=>{ LS.set('sq_readmin',readmin); },[readmin]);
+  useEffect(()=>{ LS.set('sq_deck',deck); },[deck]);
+  useEffect(()=>{ LS.set('sq_week',week); },[week]);
+  useEffect(()=>{ LS.set('sq_booksdone',booksDone); },[booksDone]);
+  useEffect(()=>{ LS.set('sq_stats',stats); },[stats]);
+  useEffect(()=>{ LS.set('sq_theme',theme); document.documentElement.setAttribute('data-theme',theme); },[theme]);
+
+  // Subir cambios (con retraso para agrupar)
+  useEffect(()=>{
+    if(!Sync.enabled()) return;
+    const t=setTimeout(()=>{ Sync.pushState().then(()=>setSyncState({ok:true,msg:'',at:Date.now()})).catch(e=>setSyncState({ok:false,msg:e.message})); },2500);
+    return ()=>clearTimeout(t);
+  },[tokens,city,milestones,activeBookId,progress,conquests,feynmanNotes,streak,readmin,deck,week,booksDone,stats,theme,pin]);
+  useEffect(()=>{
+    if(!Sync.enabled()) return;
+    const t=setTimeout(()=>{ Sync.pushBooks(books).catch(e=>setSyncState({ok:false,msg:e.message})); },4000);
+    return ()=>clearTimeout(t);
+  },[books,pin]);
+  // Al volver a la app, traer lo hecho en el otro dispositivo
+  useEffect(()=>{
+    let hiddenAt=0;
+    const onVis=()=>{
+      if(document.visibilityState==='hidden'){ hiddenAt=Date.now(); return; }
+      if(!Sync.enabled() || Date.now()-hiddenAt<20000) return;
+      Sync.pull().then(ch=>{ if(ch) location.reload(); }).catch(()=>{});
+    };
+    document.addEventListener('visibilitychange',onVis);
+    return ()=>document.removeEventListener('visibilitychange',onVis);
+  },[]);
+
+  const aiReady=!!apiKey || (server.serverKey && (!server.pin || !!pin));
+  const showToast=(msg,type='success')=>setToast({msg,type,key:Date.now()});
+  const earnTokens=(amount,reason)=>{ if(!amount) return; setTokens(t=>t+amount); showToast(`+${amount} 🪙 ${reason}`); };
+  const saveApiKey=(k)=>{ setApiKey(k.trim()); showToast(k.trim()?'API Key guardada ✅':'API Key borrada'); };
+
+  async function submitPin(p){
+    const v=(p||'').trim(); if(!v) return;
+    setPinBusy(true); setPinErr('');
+    const prev=LS.get('sq_pin','');
+    LS.set('sq_pin',v);
+    try{
+      await Sync.req('GET','ping');
+      const changed=await Sync.pull();
+      setPin(v);
+      if(changed){ location.reload(); return; }
+      showToast('🔗 Dispositivo conectado');
+    }catch(e){
+      LS.set('sq_pin',prev);
+      setPinErr(e.message==='PIN incorrecto'?'PIN incorrecto':'No se pudo conectar: '+e.message);
+    }finally{ setPinBusy(false); }
+  }
+  function forgetPin(){ LS.set('sq_pin',''); LS.set('sq_sync_hash',null); setPin(''); showToast('Dispositivo desconectado'); }
+
+  // ── Racha diaria + contadores semanales ──
+  function bumpWeek(id,n=1){
+    setWeek(w=>{ const cur=w.week===weekStr()?w:{week:weekStr(),counts:{},claimed:[],chest:false}; return {...cur,counts:{...cur.counts,[id]:(cur.counts[id]||0)+n}}; });
+  }
+  function bumpStreak(){
+    const t=todayStr(); if(streak.last===t) return;
+    const y=todayStr(new Date(Date.now()-864e5));
+    const count=streak.last===y?streak.count+1:1;
+    setStreak({last:t,count,best:Math.max(streak.best||0,count)});
+    const bonus=Math.min(TOKENS.STREAK_STEP*count,TOKENS.STREAK_MAX);
+    setTimeout(()=>earnTokens(bonus,`🔥 Racha de ${count} día${count>1?'s':''}`),600);
+  }
+  function onStudy(type,data={}){
+    bumpStreak();
+    if(type==='chapter') bumpWeek('chapters');
+    if(type==='feynman' && data.passed) bumpWeek('feynman');
+    if(type==='review') bumpWeek('reviews');
+    if(type==='minute'){
+      bumpWeek('minutes'); setStats(s=>({...s,minutes:(s.minutes||0)+1}));
+      const t=todayStr(), cur=readmin.date===t?readmin.minutes:0;
+      if(cur<TOKENS.READ_MINUTE_CAP){
+        setReadmin({date:t,minutes:cur+1}); setTokens(x=>x+TOKENS.READ_MINUTE);
+        if((cur+1)%5===0) showToast(`⏱️ ${cur+1} min leyendo hoy · +5 🪙`);
+      }
+    }
+    if(type==='voice') setStats(s=>({...s,voice:(s.voice||0)+1}));
+  }
+  function claimChallenge(id){
+    const w=WEEKLY.find(x=>x.id===id); if(!w) return;
+    const cur=week.week===weekStr()?week:{week:weekStr(),counts:{},claimed:[],chest:false};
+    if((cur.claimed||[]).includes(id) || ((cur.counts||{})[id]||0)<w.goal) return;
+    setWeek({...cur,claimed:[...(cur.claimed||[]),id]}); earnTokens(w.reward,`🎯 Reto: ${w.label}`);
+  }
+  function claimChest(){
+    const cur=week.week===weekStr()?week:null; if(!cur || cur.chest) return;
+    if(!WEEKLY.every(w=>(cur.claimed||[]).includes(w.id))) return;
+    setWeek({...cur,chest:true}); earnTokens(WEEKLY_CHEST,'🎁 ¡Cofre semanal!');
+  }
+
+  // ── Repaso espaciado ──
+  function addCards(cards,chapter,book){
+    setDeck(d=>{
+      const have=new Set(d.map(c=>c.q.trim().toLowerCase()));
+      const add=(cards||[]).filter(c=>c&&c.q&&c.a&&!have.has(String(c.q).trim().toLowerCase())).map((c,i)=>({id:Date.now()+'_'+i,q:String(c.q),a:String(c.a),chapter:chapter?.title||'',bookId:book?.id||'',box:0,due:Date.now()+864e5}));
+      if(add.length) setTimeout(()=>showToast(`🧠 ${add.length} tarjetas guardadas para repaso`),300);
+      return [...d,...add];
+    });
+  }
+  function answerReview(id,knew){
+    const card=deck.find(c=>c.id===id); if(!card) return;
+    const now=Date.now();
+    let upd;
+    if(knew){ const box=Math.min(card.box+1,REVIEW_DAYS.length-1); upd={...card,box,due:now+REVIEW_DAYS[box]*864e5};
+      const onTime=now-card.due<=1.5*864e5; earnTokens(onTime?TOKENS.REVIEW_ONTIME:TOKENS.FLASHCARD,onTime?'🧠 Repaso a tiempo (doble)':'🧠 Repaso'); }
+    else upd={...card,box:0,due:now+864e5};
+    setDeck(d=>d.map(c=>c.id===id?upd:c));
+    setStats(s=>({...s,reviews:(s.reviews||0)+1}));
+    onStudy('review');
+  }
+
+  // ── Libros ──
+  function loadBook(newBook){
+    setBooks(prev=>{const exists=prev.find(b=>b.title===newBook.title);if(exists)return prev;return [...prev,newBook];});
+    setActiveBookId(newBook.id); setActiveNav('library');
+    showToast(`📚 ${newBook.chapters.length} capítulos cargados`);
+  }
+  function deleteBook(id){
+    setBooks(prev=>prev.filter(b=>b.id!==id));
+    LS.set('sq_books_deleted',[...(LS.get('sq_books_deleted',[])||[]),id]);
+    if(activeBookId===id){ const remaining=books.filter(b=>b.id!==id); setActiveBookId(remaining[0]?.id||null); }
+  }
+  function completeChapter(chapterId){
+    const book=selectedBook||books.find(b=>b.id===activeBookId);
+    const key=`${book?.id||activeBookId}_${chapterId}`;
+    const np={...progress,[key]:progress[key]||Date.now()};
+    setProgress(np);
+    if(book && !booksDone.includes(book.id) && (book.chapters||[]).length>0 && book.chapters.every(ch=>np[`${book.id}_${ch.id}`])){
+      setBooksDone(b=>[...b,book.id]); setTimeout(()=>earnTokens(TOKENS.BOOK_DONE,`📚 ¡Libro terminado: ${book.title}!`),900);
+    }
+  }
+  function selectChapter(ch,book){ setSelectedChapter(ch); setSelectedBook(book); setActiveNav('reader'); }
+
+  // ── Mundo: construir y mejorar ──
+  function upgradeBuilding(country,bid){
+    const cur=(city[country.id]||{})[bid]||0; if(cur>=MAX_LVL) return;
+    const cost=levelCost(bid,cur+1); if(tokens<cost){ showToast(`Te faltan ${cost-tokens} tokens`,'error'); return; }
+    const newCity={...city,[country.id]:{...(city[country.id]||{}),[bid]:cur+1}};
+    setCity(newCity); setTokens(t=>t-cost);
+    const pct=countryPct(newCity,country), done=milestones[country.id]||[];
+    const hits=MILESTONES.filter(m=>pct>=m.pct&&!done.includes(m.pct));
+    const name=WORLD_BUILDINGS[bid].label;
+    if(hits.length){
+      setMilestones(ms=>({...ms,[country.id]:[...done,...hits.map(h=>h.pct)]}));
+      const bonus=hits.reduce((a,h)=>a+h.bonus,0);
+      setTimeout(()=>{
+        setTokens(t=>t+bonus);
+        if(hits.some(h=>h.pct===100)){ setConquests(c=>c.includes(country.id)?c:[...c,country.id]); setCelebrate({country,bonus}); }
+        else showToast(`🎁 ${hits[hits.length-1].label} ${country.flag} ${country.name} +${bonus} 🪙`,'conquest');
+      },500);
+    } else showToast(cur===0?`🏗️ ${name}: en construcción`:cur===1?`✅ ${name}: terminado`:`✨ ${name}: ¡de lujo!`);
+  }
+
+  const navItems=[
+    {id:'home',label:'Inicio',Icon:Icons.Home},
+    {id:'library',label:'Libros',Icon:Icons.Book},
+    {id:'city',label:'Mundo',Icon:Icons.Globe},
+    {id:'stats',label:'Stats',Icon:Icons.Chart},
+    {id:'settings',label:'Config',Icon:Icons.Settings},
+  ];
+  const showReader=activeNav==='reader'&&selectedChapter;
+  const chapterProgressKey=`${selectedBook?.id||activeBookId}_${selectedChapter?.id}`;
+  const needPin=server.serverKey && server.pin && !pin && !pinSkip;
+  const needKey=!server.serverKey && !apiKey;
+
+  return(
+    <div className="app-shell" style={{display:'flex',flexDirection:'column',height:'100%',position:'relative'}}>
+      <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+        {showReader?(
+          <div style={{flex:1,display:'flex',flexDirection:'column',overflow:'hidden'}}>
+            <div style={{padding:'12px 16px',background:'var(--surface2)',borderBottom:'1px solid rgba(51,65,85,0.4)',backdropFilter:'blur(16px)',display:'flex',alignItems:'center',gap:12,flexShrink:0}}>
+              <button className="btn btn-secondary btn-sm" onClick={()=>{setActiveNav('library');setSelectedChapter(null);setSelectedBook(null);}}>← Volver</button>
+              <span style={{fontSize:16,color:'var(--muted)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontFamily:'Plus Jakarta Sans',fontWeight:600}}>{selectedBook?.title}</span>
+              <span className="badge badge-gold">{tokens} ST</span>
+            </div>
+            <ReaderScreen chapter={selectedChapter} book={selectedBook} apiKey={apiKey} ai={aiReady} onEarnTokens={earnTokens} onComplete={completeChapter} alreadyDone={!!progress[chapterProgressKey]} onSaveFeynman={saveFeynmanNote} onStudy={onStudy} onAddCards={addCards}/>
+          </div>
+        ):(
+          <>
+            {activeNav==='home'&&<HomeScreen tokens={tokens} books={books} activeBookId={activeBookId} progress={progress} onNav={setActiveNav} conquests={conquests} city={city} streak={streak} week={week} deck={deck} readmin={readmin} onClaim={claimChallenge} onClaimChest={claimChest}/>}
+            {activeNav==='library'&&<LibraryScreen books={books} activeBookId={activeBookId} onBookLoad={loadBook} onSelectBook={setActiveBookId} onDeleteBook={deleteBook} onChapterSelect={selectChapter} progress={progress}/>}
+            {activeNav==='city'&&<ConquestScreen tokens={tokens} city={city} conquests={conquests} milestones={milestones} onUpgrade={upgradeBuilding}/>}
+            {activeNav==='review'&&<ReviewScreen deck={deck} onAnswer={answerReview} onNav={setActiveNav}/>}
+            {activeNav==='stats'&&<StatsScreen books={books} progress={progress} tokens={tokens} feynmanNotes={feynmanNotes} conquests={conquests} streak={streak} stats={stats} deck={deck} city={city}/>}
+            {activeNav==='settings'&&<SettingsScreen apiKey={apiKey} onSave={saveApiKey} theme={theme} onToggleTheme={()=>setTheme(t=>t==='dark'?'light':'dark')} server={server} pin={pin} onPin={submitPin} onForgetPin={forgetPin} pinBusy={pinBusy} pinErr={pinErr} syncState={syncState}/>}
+          </>
+        )}
+      </div>
+
+      {!showReader&&(
+        <nav className="bottom-nav">
+          {navItems.map(item=>(
+            <button key={item.id} className={`nav-item ${activeNav===item.id?'active':''}`} onClick={()=>setActiveNav(item.id)}>
+              <item.Icon/>{item.label}
+            </button>
+          ))}
+        </nav>
+      )}
+
+      {toast&&<Toast key={toast.key} message={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
+      <ConquestCelebration data={celebrate} onClose={()=>setCelebrate(null)}/>
+
+      {(needPin||needKey)&&activeNav==='home'&&(
+        <div className="modal-overlay" style={{alignItems:'center'}}>
+          <div style={{width:'calc(100% - 32px)',maxWidth:400,background:'linear-gradient(180deg,#0f172a,#07111f)',borderRadius:24,padding:28,border:'1px solid rgba(6,182,212,0.2)',boxShadow:'0 24px 80px rgba(0,0,0,0.8)'}}>
+            <div style={{textAlign:'center',marginBottom:20}}>
+              <div style={{fontSize:52,marginBottom:10}}>🎓</div>
+              <div className="font-display" style={{fontWeight:800,fontSize:26,color:'#f1f5f9',marginBottom:6}}>StudyQuest</div>
+              <div style={{fontSize:16,color:'#94a3b8',lineHeight:1.6}}>{needPin?'Escribe tu PIN para conectar este dispositivo. Tu progreso se sincroniza entre el teléfono y el PC.':'Ingresa tu API Key de Anthropic para comenzar.'}</div>
+            </div>
+            {needPin?(
+              <>
+                <input className="input" type="password" inputMode="numeric" autoComplete="off" placeholder="PIN" value={pinInput} onChange={e=>setPinInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&submitPin(pinInput)} style={{marginBottom:10,textAlign:'center',letterSpacing:6,fontSize:22}}/>
+                {pinErr&&<div style={{color:'#fca5a5',fontSize:14,marginBottom:10,textAlign:'center'}}>{pinErr}</div>}
+                <button className="btn btn-primary btn-full btn-lg" disabled={pinBusy} onClick={()=>submitPin(pinInput)}>{pinBusy?<Spinner text="Conectando"/>:'Conectar →'}</button>
+                <button className="btn btn-secondary btn-full" style={{marginTop:10}} onClick={()=>{sessionStorage.setItem('sq_pin_skip','1');setPinSkip(true);}}>Ahora no</button>
+              </>
+            ):(
+              <>
+                <input className="input" type="password" placeholder="sk-ant-..." onChange={e=>setOnboardKey(e.target.value)} value={onboardKey} style={{marginBottom:14}}/>
+                <button className="btn btn-primary btn-full btn-lg" onClick={()=>{if(onboardKey.trim())saveApiKey(onboardKey);}}>Comenzar →</button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  function saveFeynmanNote(note){ setFeynmanNotes(n=>[...n,note]); }
+}
+
+// ═══ ARRANQUE: comprobar servidor y traer progreso antes de pintar ═══
+async function checkVersion(){
+  try{
+    const r=await fetch('/version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return;
+    const {v}=await r.json();
+    if(v && v!==APP_VERSION && sessionStorage.getItem('sq_reloaded_for')!==v){ sessionStorage.setItem('sq_reloaded_for',v); location.replace('/?v='+encodeURIComponent(v)); }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') checkVersion(); });
+async function boot(){
+  checkVersion();
+  try{
+    const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),3500);
+    const r=await fetch('/api/claude',{method:'GET',signal:ctl.signal,cache:'no-store'}); clearTimeout(tm);
+    if(r.ok){ const j=await r.json(); if(j&&typeof j==='object') window.__server=j; }
+  }catch(e){}
+  window.__server=window.__server||{serverKey:false,pin:false};
+  if(Sync.enabled()){
+    try{ await Promise.race([Sync.pull(),new Promise((_,rej)=>setTimeout(()=>rej(new Error('Sin conexión')),6000))]); }
+    catch(e){ window.__syncError=e.message; }
+  }
+  if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+}
+boot();
+
+</script>
+</body>
+</html>

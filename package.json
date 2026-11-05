@@ -1,0 +1,9 @@
+{
+  "name": "studyquest",
+  "version": "3.0.0",
+  "private": true,
+  "description": "StudyQuest — lector inteligente con conquista del mundo",
+  "dependencies": {
+    "@netlify/blobs": "^8.2.0"
+  }
+}

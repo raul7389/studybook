@@ -2,3 +2,6 @@
 .netlify
 
 Keys*.txt
+
+node_modules/
+_zip/

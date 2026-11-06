@@ -1,4 +1,4 @@
-// v5 — clave en el servidor (ANTHROPIC_API_KEY) protegida con PIN (APP_PIN); acepta también la clave del usuario
+// v6 — clave en el servidor (ANTHROPIC_API_KEY) protegida con PIN (APP_PIN); acepta también la clave del usuario
 const https = require('https');
 
 const ALLOWED_MODELS = /^claude-(haiku|sonnet|opus)-/;
@@ -19,12 +19,10 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return json(405, { error: { message: 'Method Not Allowed' } });
 
   const h = event.headers || {}; // Netlify pasa los encabezados en minúsculas
-  let apiKey = h['x-api-key'] || '';
-  if (!apiKey && serverKey) {
-    if (appPin && (h['x-app-pin'] || '') !== appPin) return json(401, { error: { message: 'PIN incorrecto o falta el PIN' } });
-    apiKey = serverKey;
-  }
-  if (!apiKey) return json(400, { error: { message: 'Falta la API Key: configúrala en Netlify o en Config' } });
+  const userKey = h['x-api-key'] || '';
+  const pinOk = !appPin || (h['x-app-pin'] || '') === appPin;
+  if (!userKey && serverKey && !pinOk) return json(401, { error: { message: 'PIN incorrecto o falta el PIN' } });
+  if (!userKey && !serverKey) return json(400, { error: { message: 'Falta la API Key: configúrala en Netlify o en Config' } });
 
   const bodyData = event.body || '';
   try {
@@ -35,17 +33,24 @@ exports.handler = async (event) => {
     return json(400, { error: { message: 'JSON inválido' } });
   }
 
-  return new Promise((resolve) => {
+  const send = (apiKey) => new Promise((resolve) => {
     const req = https.request({
       hostname: 'api.anthropic.com', path: '/v1/messages', method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(bodyData), 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
     }, (res) => {
       let data = '';
       res.on('data', (c) => (data += c));
-      res.on('end', () => resolve({ statusCode: res.statusCode, headers: { ...cors, 'Content-Type': 'application/json' }, body: data }));
+      res.on('end', () => resolve({ status: res.statusCode, data }));
     });
-    req.on('error', (err) => resolve(json(500, { error: { message: err.message } })));
+    req.on('error', (err) => resolve({ status: 500, data: JSON.stringify({ error: { message: err.message } }) }));
     req.write(bodyData);
     req.end();
   });
+
+  const tag = (r, via) => { try { const o = JSON.parse(r.data); if (r.status >= 400) o.via = via; return JSON.stringify(o); } catch (e) { return r.data; } };
+  let via = userKey ? 'user' : 'server';
+  let r = await send(userKey || serverKey);
+  // Si la clave del dispositivo es inválida y hay una clave en el servidor (con PIN correcto), reintentar con esa
+  if (r.status === 401 && userKey && serverKey && pinOk) { r = await send(serverKey); via = 'server'; }
+  return { statusCode: r.status, headers: { ...cors, 'Content-Type': 'application/json' }, body: tag(r, via) };
 };

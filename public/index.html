@@ -167,7 +167,7 @@ textarea.input { resize:vertical; min-height:130px; }
 const { useState, useEffect, useRef, useCallback } = React;
 
 // ═══ CONSTANTS ═══
-const APP_VERSION = '3.7';
+const APP_VERSION = '3.8';
 const READ = { FAST_WPM:300, MAX_WPM:450, EST_WPM:200, COVERAGE:0.9, CHECK_MIN:360, CHECK_MAX:600, PASS:2, PERFECT_BONUS:5 };
 const MODELS = { haiku:'claude-haiku-4-5-20251001', sonnet:'claude-sonnet-4-6' };
 const TOKENS = { READ_CHAPTER:10, QUIZ_PASS:5, FEYNMAN:20, FLASHCARD:2, REVIEW_ONTIME:4, STREAK_STEP:5, STREAK_MAX:50, READ_MINUTE:1, READ_MINUTE_CAP:30, BOOK_DONE:200, VOICE_FEYNMAN:10 };
@@ -222,7 +222,7 @@ async function callClaude({apiKey,model,system,messages,max_tokens=1024}) {
       const local=!!LS.get('sq_apikey','');
       throw new Error(local&&e.via!=='server'
         ? 'La API key guardada en Config no es válida. Bórrala en Config o cámbiala por una nueva.'
-        : 'La clave de Anthropic guardada en Netlify no es válida. En el PC: netlify env:set ANTHROPIC_API_KEY "tu clave sk-ant-…" --force y luego netlify deploy --prod.');
+        : 'La clave de Anthropic guardada en Netlify no es válida. Crea una nueva en platform.claude.com → API Keys, guárdala en Netlify (ANTHROPIC_API_KEY) y vuelve a publicar.');
     }
     if(/credit|billing|balance/i.test(msg)) throw new Error('Sin saldo en Anthropic: recarga créditos en console.anthropic.com → Billing.');
     throw new Error(msg);
